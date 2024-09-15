@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance - StudySphere</title>
+    <link rel="stylesheet" href="../../static/css/attendance_styles.css">
+</head>
+<body>
+    <header>
+        <div id="main">
+            <div id="nav">
+                <h1 style="font-size: 5em;">StudySphere</h1>
+                <div id="part2">
+                    <a href="index" style="font-size: 2em;">Home</a>
+                    <a href="assignment" style="font-size: 2em;">Assignments</a>
+                    <a href="profile" style="font-size: 2em;">Profile</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <main>
+        <section id="timetable-section">
+            <h2>Your Timetable</h2>
+            <div id="timetable-container">
+                <!-- Timetable will be dynamically populated here -->
+            </div>
+            <button id="create-timetable-btn">Create Timetable</button>
+        </section>
+
+        <section id="create-timetable" style="display: none;">
+            <h2>Create Timetable</h2>
+            <form id="timetable-form">
+                <label for="subject">Subject:</label>
+                <input type="text" id="subject" required placeholder="Enter subject name">
+
+                <label for="time">Time:</label>
+                <input type="time" id="time" required>
+
+                <label for="days">Days of the Week:</label>
+                <select id="days" multiple required>
+                    <option value="Monday">Monday</option>
+                    <option value="Tuesday">Tuesday</option>
+                    <option value="Wednesday">Wednesday</option>
+                    <option value="Thursday">Thursday</option>
+                    <option value="Friday">Friday</option>
+                </select>
+
+                <button type="submit">Add Timetable Entry</button>
+            </form>
+        </section>
+    </main>
+
+    <script src="../../static/js/attendance.js"></script>
+</body>
+</html>

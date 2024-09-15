@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studysphere</title>
+    <link rel="stylesheet" href="../../static/css/index_styles.css">
+</head>
+<body>
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Studysphere</h1>
+        </header>
+
+        <main class="main-content">
+            <a href="attendance" class="section" id="attendance">
+                <h2>Attendance</h2>
+                <p>Keep track of your timetable and attendance here.</p>
+            </a>
+
+            <a href="assignment" class="section" id="assignments">
+                <h2>Assignments</h2>
+                <p>Manage your assignments and due dates here.</p>
+            </a>
+        </main>
+    </div>
+    <!-- Add this to your index.html -->
+        {% if session.logged_in %}
+        <a href="{{ url_for('logout') }}">Logout</a>
+        {% endif %}
+
+    <script src="../../static/js/script.js"></script>
+</body>
+</html>
