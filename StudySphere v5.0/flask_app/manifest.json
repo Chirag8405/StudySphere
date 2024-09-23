@@ -1,0 +1,16 @@
+{
+    "scope": "/index",
+    "start_url": "/index",
+    "name": "StudySphere",
+    "display": "standalone",
+    "theme_color": "#000000",
+    "short_name": "StudySphere",
+    "background_color": "#ffffff",
+    "icons": [
+        {
+            "sizes": "192x192",
+            "type": "image/png",
+            "src": "/static/images/icon.png"
+        }
+    ]
+}

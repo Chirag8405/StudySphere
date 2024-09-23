@@ -8,7 +8,7 @@ def create_connection():
         connection = mysql.connector.connect(
             host='localhost',
             user='Chirag8405',  # Replace with your MySQL username
-            password='Chir@g_8405',  # Replace with your MySQL password
+            password='root',  # Replace with your MySQL password
             database='StudySphere'  # Your database name
         )
         print("Connection to MySQL DB successful")

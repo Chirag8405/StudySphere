@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime
@@ -17,7 +17,7 @@ def create_connection():
         connection = mysql.connector.connect(
             host='localhost',  # Your MySQL host
             user='root',  # Your MySQL username
-            password='Chir@g_8405',  # Your MySQL password
+            password='root',  # Your MySQL password
             database='StudySphere'  # Your database name
         )
         print("Connection to MySQL DB successful")
@@ -91,6 +91,14 @@ def logout():
 @app.route('/index')
 def home():
     return render_template('index.html')
+
+@app.route('/manifest.json')
+def serve_manifest():
+    return send_file('manifest.json', mimetype='application/manifest+json')
+
+@app.route('/sw.js')
+def serve_sw():
+    return send_file('service-worker.js', mimetype='application/javascript')
 
 # Route to render assignments page
 @app.route('/assignment')
