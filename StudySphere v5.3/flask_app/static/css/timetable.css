@@ -1,0 +1,457 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500&display=swap");
+
+body {
+  font-family: "Poppins", sans-serif;
+  background: linear-gradient(30deg, #85bc22, #2e4a07);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column; /* Stack header, main, and footer vertically */
+  margin: 0;
+  overflow: auto;
+}
+
+header {
+  text-align: center;
+  padding: 20px;
+  background-color: rgba(255, 255, 255, 0.1);
+  z-index: 10;
+  position: relative;
+}
+
+main {
+  flex: 1; /* Allow main to grow and take available space */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  overflow-y: auto; /* Allow vertical scrolling */
+  z-index: 10;
+  position: relative;
+}
+
+#timetable-section {
+  background: rgba(255, 255, 255, 0.2);
+  padding: 20px;
+  border-radius: 10px;
+  width: 80%; /* Set a width for better layout */
+  max-width: 1000px; /* Limit maximum width */
+  margin: 10px auto; /* Center the timetable section */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+#create-timetable {
+  background: rgba(255,255,255,0.3); /* Slightly different background for contrast */
+  padding: 20px;
+  border-radius: 10px;
+  width: 100%; /* Full width of the parent container */
+  max-width: 600px; /* Limit maximum width for create timetable section */
+  margin: 20px auto; /* Center the create timetable section */
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 2;
+}
+
+h2 {
+  color: #fff;
+}
+
+input,
+select {
+  width: calc(100% - 20px); /* Full width minus padding */
+  padding: 10px;
+  margin: 10px 0; /* Space between inputs */
+  border: none;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+
+button:hover {
+  background: #85bc22; /* Change background on hover */
+}
+
+.timetable-entry {
+  background: rgba(255, 255, 255, 0.3);
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 5px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.day-section {
+  margin: 20px 0;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 5px;
+}
+
+.timetable-entry {
+  display: none;
+  position: fixed;
+  z-index: 2;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.button-content {
+  margin-top: 100px;
+  width: 270px;
+  background: linear-gradient(90deg, #85bc22 0%, #446408);
+  padding: 1rem 1.35rem;
+  border-radius: 4rem;
+  border: 2px solid #ece8e8;
+  color: #ece8e8;
+  font-size: 22px;
+  display: flex;
+  overflow: hidden;
+}
+
+#main {
+  height: 100%;
+  width: 100%;
+}
+
+#nav {
+  height: 100px;
+  width: 100%;
+  top: 0;
+  font-size: 10px;
+  position: center;
+  color: white;
+  padding: 0 0px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#nav #part2 {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#nav #part2 a {
+  text-decoration: none;
+  margin: 20px;
+  color: white;
+  position: relative;
+  font-size: 20px;
+}
+
+#part2 a::before {
+  content: "";
+  height: 5px;
+  width: 100px;
+  background-color: #85bc22;
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  opacity: 0;
+  transition: all 1s;
+}
+#part2 a:hover::before {
+  opacity: 1;
+  width: 100%;
+}
+
+#nav h1 {
+  font-size: 32px;
+  font-weight: 250;
+}
+
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 50px 100px;
+}
+
+.main-content h1 {
+  font-size: 85px;
+  color: #85bc22;
+}
+
+.main-content h2 {
+  font-size: 40px;
+  margin: 30px 0;
+  font-weight: 150;
+  white-space: nowrap;
+}
+
+.circle {
+  position: absolute;
+  width: 100px;
+  height: 100px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  backdrop-filter: blur(5px);
+  animation: moveUpDown 10s linear infinite;
+  z-index: 1;
+}
+
+/* Keyframes for up and down movement */
+@keyframes moveUpDown {
+  0% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(50px);
+  }
+  75% {
+    transform: translateY(-50px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Random positions for circles */
+.circle:nth-child(1) {
+  top: 50px;
+  left: 70px;
+  height: 170px;
+  width: 170px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 12s; /* Different speed */
+}
+
+/* Additional circle styles... */
+
+.circle:nth-child(2) {
+  top: 300px;
+  left: 30px;
+  width: 90px;
+  height: 90px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 10s; /* Different speed */
+}
+
+.circle:nth-child(3) {
+  top: 200px;
+  left: 900px;
+  width: 85px;
+  height: 85px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 14s; /* Different speed */
+}
+
+.circle:nth-child(4) {
+  top: 400px;
+  right: 200px;
+  width: 170px;
+  height: 170px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 16s; /* Different speed */
+}
+
+.circle:nth-child(5) {
+  bottom: 80px;
+  left: 150px;
+  width: 120px;
+  height: 120px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 11s; /* Different speed */
+}
+
+.circle:nth-child(6) {
+  top: 150px;
+  right: 80px;
+  width: 100px;
+  height: 100px;
+  background: none;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 13s; /* Different speed */
+}
+
+.circle:nth-child(7) {
+  top: 50px;
+  left: 800px;
+  width: 50px;
+  height: 50px;
+  background: none;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 15s; /* Different speed */
+}
+
+.circle:nth-child(8) {
+  bottom: 140px;
+  left: 200px;
+  width: 200px;
+  height: 200px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 17s; /* Different speed */
+}
+
+/* New circles */
+.circle:nth-child(9) {
+  top: 100px;
+  left: 500px;
+  width: 120px;
+  height: 120px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 18s; /* Different speed */
+}
+
+.circle:nth-child(10) {
+  top: 350px;
+  left: 600px;
+  width: 80px;
+  height: 80px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 19s; /* Different speed */
+}
+
+.circle:nth-child(11) {
+  top: 200px;
+  right: 250px;
+  width: 150px;
+  height: 150px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 20s; /* Different speed */
+}
+
+.circle:nth-child(12) {
+  bottom: 100px;
+  right: 550px;
+  width: 150px;
+  height: 150px;
+  background: none;
+  border: 5px solid rgba(255, 255, 255, 0.1);
+  animation-duration: 25s; /* Different speed */
+}
+
+.container {
+  position: relative;
+  z-index: 1; /* Ensure content is above the circles */
+}
+
+/* Modal styles */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 2; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow-y: scroll; /* Enable scroll if needed */
+  background-color: rgba(0,0,0,0.3); /* Black with reduced opacity for the overlay */
+}
+
+.modal-content {
+  background-color: #2e4a07; /* Solid white background for the modal content */
+  margin: 10% auto; /* Centered vertically and horizontally with less margin */
+  padding: 15px; /* Reduced padding for a more compact look */
+  border-radius: 5px;
+  width: 300px; /* Set a fixed width for compactness */
+}
+
+.close {
+  color: black; /* Change close button color to black for visibility against white */
+  float: right;
+  font-size: 20px; /* Slightly smaller close button font size */
+  font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+  color: #218838; /* Change color on hover */
+  text-decoration: none;
+  cursor: pointer;
+}
+
+input,
+select {
+  display: block;
+  width: calc(100% - 20px); /* Full width minus padding */
+  padding: 8px; /* Reduced padding for inputs */
+  margin: 10px auto; /* Centered margin */
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+button {
+  padding: 10px; /* Reduced button padding for compactness */
+  background-color: #2e4a07;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.3s ease-in-out;
+  margin-right: 5px;
+}
+
+button:hover {
+  background-color: #85bc22; /* Darker green on hover */
+}
+#timetable {
+  margin-top: 20px;
+}
+
+h2.modal-content {
+  background-color: #85bc22;
+}
+
+/* Timetable styles */
+#timetable {
+  margin-top: 20px; /* Space between button and timetable display area */
+  max-height: 400px; /* Set a maximum height for the timetable */
+  overflow-y: auto; /* Enable vertical scrolling if content exceeds max height */
+  padding: 10px; /* Optional padding for aesthetics */
+  border-radius: 5px; /* Optional rounded corners */
+}
+
+/* Styles for each day's lectures container*/
+.lectures-container {
+  display: flex; /* Use flexbox to align lectures horizontally*/
+  flex-wrap: wrap; /* Allow wrapping to the next line if necessary*/
+  justify-content: flex-start; /* Align items to the start of the container*/
+  margin-bottom: 15px; /* Space between different days' lectures*/
+  align-items: center;
+}
+
+/* Individual lecture container styles*/
+.lecture-container p {
+  display: flex;
+  flex-direction: row; /* Stack name and time vertically*/
+  align-items: center; /* Center items horizontally*/
+  margin: 20px 10px; /* Space between individual lectures*/
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.day-section {
+  text-align: center;
+  font-weight: 550;
+  margin-top: 20px;
+}
+
+/* Lecture info styles*/
+.lecture-info {
+  font-weight: bold;
+}
+
+.lecture-time {
+  margin-bottom: 5px;
+}
+
+.actions {
+  display: flex; /* Align action buttons horizontally*/
+}
