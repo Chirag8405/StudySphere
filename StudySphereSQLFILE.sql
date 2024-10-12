@@ -29,7 +29,7 @@ CREATE TABLE Timetable (
     subject VARCHAR(100) NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-    days VARCHAR(100), -- Store days as a comma-separated string (e.g., "Monday,Wednesday")
+    days VARCHAR(100),
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
@@ -49,7 +49,7 @@ CREATE TABLE ExtraLectures (
     subject VARCHAR(100) NOT NULL,
     start_time TIME NOT NULL,
     end_time TIME NOT NULL,
-    days VARCHAR(100), -- Store days as a comma-separated string (e.g., "Monday,Wednesday")
+    days VARCHAR(100), 
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
 
@@ -60,15 +60,3 @@ CREATE TABLE UserInterests (
     interest VARCHAR(100) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES Users(id) ON DELETE CASCADE
 );
-
-
-
-select * from users;
-
-select * from assignments;
-
-select * from timetable;
-
-select * from attendance;
-
-select * from extralectures;
