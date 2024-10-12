@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - StudySphere</title>
+    <link rel="stylesheet" href="../../static/css/profile.css">
+</head>
+<body>
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>StudySphere</h1>
+            <nav>
+                <ul>
+                    <li><a href="index">Home</a></li>
+                    <li><a href="assignment">Assignments</a></li>
+                    <li><a href="attendance">Attendance</a></li>
+                    <li><a href="timetable">Timetable</a></li>
+
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <section id="profile-section">
+                <h2>Your Profile</h2>
+                <h3 id="user-name"></h3>
+                <p id="user-bio"></p>
+                <button id="edit-profile-btn">Edit Profile</button>
+                <!-- Edit Profile Modal -->
+                <div id="edit-profile-modal" style="display:none;">
+                    <h2>Edit Profile</h2>
+                    Name: 
+                    <input type="text" id="edit-name" placeholder="Enter your name" />
+                    Bio: 
+                    <textarea id="edit-bio" placeholder="Enter your bio"></textarea>
+
+                    <!-- Save Changes Button -->
+                    <button id="save-changes-btn">Save Changes</button>
+
+                    <!-- Close Button -->
+                    <button class="close-button">Close</button>
+                </div>
+
+                <!-- Assignments Overview -->
+                <div class="summary">
+                    <h4>Assignments Overview</h4>
+                    <p>Upcoming Assignments: <span id="upcoming-assignments"></span></p>
+                    <p>Overdue Assignments: <span id="overdue-assignments"></span></p>
+                </div>
+
+                <!-- Attendance Summary -->
+                <div class="attendance-summary">
+                    <h4>Attendance Summary</h4>
+                    <p>Total Classes Attended: <span id="classes-attended"></span></p>
+                    <p>Total Classes Missed: <span id="classes-missed"></span></p>
+                    <p>Attendance Percentage: <span id="attendance-percentage"></span></p>
+                </div>
+
+                <!-- User Interests -->
+                <div class="interests">
+                    <h4>Interests</h4>
+                    <ul id="interests-list"></ul>
+                </div>
+
+                
+
+            </section>
+        </main>
+    </div>
+
+    <script src="../../static/js/profile.js"></script>
+</body>
+</html>

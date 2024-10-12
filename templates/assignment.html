@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assignments - StudySphere</title>
+    <link rel="stylesheet" href="../../static/css/assignments.css">
+</head>
+<body>
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+    </div>
+
+    <div class="container">
+        <header>
+            <div id="main">
+                <div id="nav">
+                    <h1 style="font-size: 5em;">StudySphere</h1>
+                    <div id="part2">
+                        <a href="index" style="font-size: 2em;">Home</a>
+                        <a href="timetable" style="font-size: 2em;">TimeTable</a>
+                        <a href="attendance" style="font-size: 2em;">Attendance</a>
+                        <a href="profile" style="font-size: 2em;">Profile</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section id="assignments-section">
+                <h2>Your Assignments</h2>
+                <button id="create-assignment-btn">Add Assignment</button>
+
+                <div id="assignments-container">
+                    <!-- Assignments will be dynamically populated here -->
+                </div>
+            </section>
+
+            <section id="create-assignment" style="display: none;">
+                <h2>Add Assignment</h2>
+                <form id="assignment-form">
+                    <label for="assignment-name">Assignment Name:</label>
+                    <input type="text" id="assignment-name" required placeholder="Enter assignment name">
+
+                    <label for="due-date">Due Date:</label>
+                    <input type="date" id="due-date" required>
+
+                    <button type="submit">Add Assignment</button>
+                </form>
+            </section>
+
+            <section id="modify-assignment" style="display: none;">
+                <h2>Modify Assignment</h2>
+                <form id="modify-form">
+                    <input type="hidden" id="assignment-id">
+                    <label for="assignment-name">Assignment Name:</label>
+                    <input type="text" id="modify-name" required placeholder="Enter assignment name">
+
+                    <label for="due-date">Due Date:</label>
+                    <input type="date" id="modify-date" required>
+
+                    <button type="submit">Save Changes</button>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="../../static/js/assignments.js"></script>
+</body>
+</html>

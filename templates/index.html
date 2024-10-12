@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studysphere</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#000000"/>
+    <link rel="stylesheet" href="../../static/css/index_styles.css">
+</head>
+<body>
+    <div class="background">
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+        <div class="circle"></div>
+
+    </div>
+
+    <div class="container">
+        <header>
+            <h1>Studysphere</h1>
+        </header>
+
+        <main class="main-content">
+            <a href="attendance" class="section" id="attendance">
+                <h2>Attendance</h2>
+                <p>Keep track of your attendance here.</p>
+            </a>
+
+            <a href="assignment" class="section" id="assignments">
+                <h2>Assignments</h2>
+                <p>Manage your assignments here.</p>
+            </a>
+            <a href="timetable" class="section" id="timetable">
+                <h2>Timetable</h2>
+                <p>Manage your Timetable here.</p>
+            </a>
+        </main>
+    </div>
+        {% if session.logged_in %}
+        <a href="{{ url_for('logout') }}" id="logout">Logout</a>
+        {% endif %}
+
+    <scripy src="../../static/js/app.js"></script>
+</body>
+</html>

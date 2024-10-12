@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Timetable - StudySphere</title>
+    <link rel="stylesheet" href="../../static/css/timetable.css"> 
+</head>
+<body>
+    <header>
+        <div id="main">
+            <div id="nav">
+                <h1 style="font-size: 5em;">StudySphere</h1>
+                <div id="part2">
+                    <a href="index" style="font-size: 2em;">Home</a>
+                    <a href="assignment" style="font-size: 2em;">Assignments</a>
+                    <a href="attendance" style="font-size: 2em;">Attendance</a>
+                    <a href="profile" style="font-size: 2em;">Profile</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="background">
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+            <div class="circle"></div>
+        </div>
+        <section id="timetable-section">
+            <h2>Your Timetable</h2>
+            <!-- Create Timetable Button -->
+            <button id="create-timetable-btn">Create Timetable</button>
+            <div id="timetable-container">
+                <!-- Timetable will be dynamically populated here -->
+            </div>
+            <!-- Modal for Creating Timetable -->
+            <div id="create-timetable-modal" class="modal" style="display: none;">
+                <div class="modal-content">
+                    <span class="close" id="closeCreateModalButton">&times;</span>
+                    <h2>Create Timetable Entry</h2>
+                    <form id="timetable-form">
+                        <label for="subject">Subject:</label>
+                        <input type="text" id="subject" required placeholder="Enter subject name">
+
+                        <label for="start-time">Start Time:</label>
+                        <input type="time" id="start-time" required>
+
+                        <label for="end-time">End Time:</label>
+                        <input type="time" id="end-time" required>
+
+                        <label for="days">Days of the Week:</label>
+                        <select id="days" multiple required>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                        </select>
+
+                        <!-- Add Timetable Entry Button -->
+                        <button type="submit">Add Timetable Entry</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Modal Structure for Editing -->
+            <div id="Modal" class="modal" style="display:none;">
+                <div class="modal-content">
+                    <span class="close" id="closeModalButton">&times;</span>
+                    <h2>Edit Timetable Entry</h2>
+                    <form id="edit-timetable-form">
+                        <label for="edit-subject">Subject:</label>
+                        <input type="text" id="edit-subject" required placeholder="Enter subject name">
+
+                        <label for="edit-start-time">Start Time:</label>
+                        <input type="time" id="edit-start-time" required>
+
+                        <label for="edit-end-time">End Time:</label>
+                        <input type="time" id="edit-end-time" required>
+
+                        <label for="edit-days">Days of the Week:</label>
+                        <select id="edit-days" multiple required>
+                            <option value="Monday">Monday</option>
+                            <option value="Tuesday">Tuesday</option>
+                            <option value="Wednesday">Wednesday</option>
+                            <option value="Thursday">Thursday</option>
+                            <option value="Friday">Friday</option>
+                            <option value="Saturday">Saturday</option>
+                            <option value="Sunday">Sunday</option>
+                        </select>
+
+                        <!-- Save Changes Button -->
+                        <button type="button" id="save-changes-btn">Save Changes</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="../../static/js/timetable.js"></script>
+</body>
+</html>

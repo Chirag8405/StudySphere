@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="../../static/css/attendance_styles.css" />
+    <title>Attendance - StudySphere</title>
+  </head>
+  <body>
+    <header>
+      <div id="main">
+        <div id="nav">
+          <h1>StudySphere</h1>
+          <div id="part2">
+            <a href="index">Home</a>
+            <a href="timetable">Timetable</a>
+            <a href="assignment">Assignments</a>
+            <a href="profile">Profile</a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="background">
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+      <div class="circle"></div>
+    </div>
+
+    <main>
+      <section id="attendance-section">
+        <h2>Attendance Percentage</h2>
+
+        <h1>Today's Schedule</h1>
+        <div id="timetableList"></div>
+        <!-- Today's lectures will be listed here -->
+        <div id="attendanceList">
+          <!-- This will be dynamically populated by JavaScript -->
+        </div>
+
+        <!-- Button to add extra lecture -->
+        <button id="create-extra-lecture-btn">Add Extra Lecture</button>
+
+        <!-- Extra Lecture Form Section (initially hidden) -->
+        <section id="create-extra-lecture" style="display: none">
+          <h2>Create Extra Lecture</h2>
+          <form id="extra-lecture-form">
+            <label for="extra-subject">Subject:</label>
+            <input
+              type="text"
+              id="extra-subject"
+              required
+              placeholder="Enter subject name"
+            />
+
+            <label for="extra-start-time">Start Time:</label>
+            <input type="time" id="extra-start-time" required />
+
+            <label for="extra-end-time">End Time:</label>
+            <input type="time" id="extra-end-time" required />
+
+            <!-- Days of the Week (single selection) -->
+            <label for="extra-days">Day of the Week:</label>
+            <select id="extra-days" required>
+              <option value="">Select a day</option>
+              <!-- Placeholder option -->
+              <option value="Monday">Monday</option>
+              <option value="Tuesday">Tuesday</option>
+              <option value="Wednesday">Wednesday</option>
+              <option value="Thursday">Thursday</option>
+              <option value="Friday">Friday</option>
+              <option value="Saturday">Saturday</option>
+              <option value="Sunday">Sunday</option>
+            </select>
+
+            <!-- Add Extra Lecture Button -->
+            <button type="submit">Add Extra Lecture</button>
+          </form>
+        </section>
+      </section>
+    </main>
+
+    <script src="../../static/js/attendance.js"></script>
+  </body>
+</html>
