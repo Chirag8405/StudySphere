@@ -1,176 +1,97 @@
-# StudySphere — Accessible Academic Planner
+# StudySphere
 
-A modern, accessibility-focused Android academic planning app built with **Kotlin + Jetpack Compose**.
+StudySphere is an Android planner for students who want to track classes, attendance, and assignments in one place.
 
-## 📦 Download APK 
+## Download
 
-[Download StudySphere v1.0.0 APK](https://github.com/Chirag8405/StudySphere/releases/download/1.0.0/StudySphere.apk)
+Stable release (v1.0.0):
+[StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/1.0.0/StudySphere.apk)
 
----
+## Core Features
 
-## ✨ Features
+### Dashboard
+- Today's lecture timeline
+- Quick attendance marking (Present, Absent, Cancelled)
+- Summary cards for attendance health and upcoming work
+- Pull to refresh
 
-### 🎓 Subjects
-- Add, edit, and delete subjects with custom colors (12-color palette)
-- Set per-subject minimum attendance threshold (50–100%)
-- Define recurring weekly lecture slots with day, time, and room
+### Subjects and Lectures
+- Create, edit, and delete subjects
+- Choose a color for each subject
+- Set minimum attendance target per subject
+- Add recurring lecture slots with day, time, and room
 
-### 📋 Attendance Management
-- Dashboard shows today's lectures with quick **P / A / C** mark buttons
-- Subject-wise attendance summaries with live progress bars
-- Mark attendance date via a calendar date picker (no manual date typing)
-- Intelligence engine:
-  - **Can skip N more** — classes you can miss while staying above threshold
-  - **Must attend N** — consecutive classes needed to recover
-  - Risk levels: Safe · Warning · Danger · Critical
-- Full history view per subject with inline status editing
+### Attendance Tracking
+- Subject-wise attendance percentage and progress
+- Per-subject history with edit support
+- Attendance insights:
+  - Can skip N classes
+  - Must attend N classes to recover
+- Risk labels: Safe, Warning, Danger, Critical
 
-### 📝 Assignments
-- Create assignments with title, description, due date, and priority
-- Add assignments under a subject or an **Other** category
-- Pick due date from a calendar date picker
-- Search assignments + 2 dropdown filters (status/priority and subject)
-- One-tap complete/undo from the card checkbox
-- Overdue detection with visual urgency cues
+### Assignments
+- Create assignments with title, notes, priority, and due date
+- Date picker for due date entry
+- Other category for non-subject tasks
+- Search plus filters by status/priority and subject
+- Mark complete or undo directly from list
+- Overdue highlighting
 
-### 🏠 Dashboard
-- Today's schedule with instant attendance marking
-- 4-stat quick-glance row (subjects, avg %, due soon, at risk)
-- Attendance health summary with smart insight banners
-- Upcoming deadlines preview
-- Pull-to-refresh gesture support
+### UI and Accessibility
+- Light and dark theme support (saved preference)
+- Large touch targets and high-contrast status colors
+- Consistent spacing and readable typography
 
-### 🌙 Theming
-- Full **Light / Dark** theme toggle (persisted across sessions)
-- Material 3 color system with semantic states
-- Prefers **SF Pro Display** for UI text and **SF Mono** for compact labels (with Android-safe fallbacks)
+## Tech Stack
 
----
+- Kotlin
+- Jetpack Compose + Material 3
+- Navigation Compose
+- Room Database
+- DataStore Preferences
+- Kotlin Coroutines + Flow
 
-## 🏗️ Architecture
+## Requirements
 
-```
-com.studysphere/
-├── data/
-│   ├── db/          — Room DAOs, Database, TypeConverters
-│   ├── models/      — Entity & view models
-│   └── repository/  — StudySphereRepository (all business logic)
-├── ui/
-│   ├── components/  — Shared Compose components
-│   ├── screens/
-│   │   ├── dashboard/
-│   │   ├── attendance/
-│   │   ├── assignments/
-│   │   └── SubjectsScreen
-│   ├── theme/       — Color, Typography, Theme
-│   ├── Navigation   — Route definitions
-│   └── StudySphereApp — Scaffold + NavHost
-└── viewmodel/       — MainViewModel (single source of truth)
-```
+- Android Studio (Hedgehog or newer)
+- JDK 17
+- Android SDK 34
+- Minimum Android version: 8.0 (API 26)
 
-**Stack:** Kotlin · Jetpack Compose · Room · DataStore · Navigation Compose · Material 3 · Coroutines + Flow
+## Run Locally
 
----
+1. Open the project in Android Studio.
+2. Sync Gradle.
+3. Run the app module on an emulator or device (API 26+).
 
-## 🚀 Setup
+Or from terminal:
 
-### Prerequisites
-- **Android Studio Hedgehog** (2023.1.1) or newer
-- **JDK 17**
-- Android SDK 34, min SDK 26
-
-### Steps
-
-1. **Unzip** this project and open in Android Studio:
-   ```
-   File → Open → select the StudySphere/ folder
-   ```
-
-2. **Sync Gradle** — Android Studio will prompt automatically. Click *Sync Now*.
-
-3. **Run** on a device or emulator (API 26+):
-   ```
-   Run → Run 'app'
-   ```
-
-### Publish APK For v1.0.0 Release
-
-1. Build APK:
-   ```bash
-   ./gradlew assembleRelease
-   ```
-2. Create a GitHub Release with tag:
-   - `1.0.0`
-3. Upload `app/build/outputs/apk/release/app-release-unsigned.apk` and rename it to:
-   - `StudySphere.apk`
-4. The README download link above will start working immediately.
-
-### gradlew wrapper jar
-
-If you see `Could not find or load main class org.gradle.wrapper.GradleWrapperMain`:
 ```bash
-# Run once inside the project root
-gradle wrapper --gradle-version 8.2.1
-```
-Or let Android Studio auto-download it on first sync.
-
----
-
-## 📱 Navigation
-
-| Screen      | Route                | Description                          |
-|-------------|----------------------|--------------------------------------|
-| Dashboard   | `dashboard`          | Today's schedule + health overview   |
-| Attendance  | `attendance`         | All subjects with risk analysis      |
-| Detail      | `attendance_detail/{id}` | Per-subject history + mark dialog |
-| Assignments | `assignments`        | Full task list with filters          |
-| Subjects    | `subjects`           | Subject + lecture slot management    |
-
----
-
-## 🗃️ Local Storage
-
-All data is stored on-device using:
-- **Room Database** (`studysphere.db`) — subjects, lectures, attendance records, assignments
-- **DataStore Preferences** — theme toggle (dark/light)
-
-No account, login, or network required.
-
----
-
-## 🧠 Attendance Intelligence Algorithm
-
-Given:
-- `present` = classes attended
-- `total` = non-cancelled classes held
-- `minPct` = minimum threshold (e.g. 0.75)
-
-**Can Skip:**
-```
-canSkip = floor(present / minPct) - total   [min 0]
+./gradlew assembleDebug
 ```
 
-**Must Attend (to recover):**
+Debug APK output:
+- `app/build/outputs/apk/debug/app-debug.apk`
+
+## Project Structure
+
+```text
+app/src/main/java/com/studysphere/
+  data/
+    db/
+    models/
+    repository/
+  ui/
+    components/
+    screens/
+    theme/
+    Navigation.kt
+    StudySphereApp.kt
+  viewmodel/
+    MainViewModel.kt
 ```
-mustAttend = ceil((minPct × total − present) / (1 − minPct))
-```
 
-**Risk Level:**
-| Condition | Level |
-|-----------|-------|
-| pct ≥ threshold + 15% | Safe |
-| pct ≥ threshold | Warning |
-| pct ≥ threshold − 10% | Danger |
-| pct < threshold − 10% | Critical |
+## Data and Privacy
 
----
-
-## 🎨 Design System
-
-Colors follow a restrained indigo-primary palette with semantic states:
-- **Success** `#22C55E` — safe / present
-- **Warning** `#F59E0B` — borderline / medium priority
-- **Danger**  `#EF4444` — below threshold / overdue
-- **Primary** `#4F46E5` — brand indigo
-
-Dark theme uses deep navy backgrounds (`#0C0F1A`, `#131827`, `#1A2035`) with the same indigo accent.
+StudySphere is offline-first. Data is stored locally on the device using Room and DataStore.
+No account or network connection is required for core functionality.
