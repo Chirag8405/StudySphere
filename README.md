@@ -4,12 +4,12 @@ A modern, accessibility-focused Android academic planning app built with **Kotli
 
 ## 📦 Download APK (From GitHub README)
 
-[Download Latest APK](../../releases/latest/download/StudySphere.apk)
+[Download StudySphere v1.0.0 APK](https://github.com/Chirag8405/StudySphere/releases/download/1.0.0/StudySphere.apk)
 
-For this direct link to work on GitHub, publish a Release and upload the APK asset with the exact filename:
+This direct link targets release tag `1.0.0` and requires the APK asset with the exact filename:
 - `StudySphere.apk`
 
-If your asset name is different, update the link accordingly.
+If the uploaded asset name is different, update the link accordingly.
 
 ---
 
@@ -98,13 +98,14 @@ com.studysphere/
    Run → Run 'app'
    ```
 
-### Publish APK For Direct README Download
+### Publish APK For v1.0.0 Release
 
 1. Build APK:
    ```bash
    ./gradlew assembleRelease
    ```
-2. Create a GitHub Release.
+2. Create a GitHub Release with tag:
+   - `1.0.0`
 3. Upload `app/build/outputs/apk/release/app-release-unsigned.apk` and rename it to:
    - `StudySphere.apk`
 4. The README download link above will start working immediately.
