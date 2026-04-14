@@ -1,0 +1,37 @@
+# Android Studio / IntelliJ
+.idea/
+*.iml
+
+# Gradle
+.gradle/
+build/
+**/build/
+
+# Local machine config
+local.properties
+.DS_Store
+Thumbs.db
+
+# Android / NDK generated
+captures/
+.externalNativeBuild/
+.cxx/
+.navigation/
+
+# Kotlin / Java outputs
+*.class
+out/
+
+# Logs / profiling
+*.log
+*.hprof
+
+# Signing keys / secrets
+*.jks
+*.keystore
+*.pem
+
+# Generated Android artifacts (publish via GitHub Releases instead)
+*.apk
+*.aab
+*.ap_
