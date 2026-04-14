@@ -2,14 +2,9 @@
 
 A modern, accessibility-focused Android academic planning app built with **Kotlin + Jetpack Compose**.
 
-## 📦 Download APK (From GitHub README)
+## 📦 Download APK 
 
 [Download StudySphere v1.0.0 APK](https://github.com/Chirag8405/StudySphere/releases/download/1.0.0/StudySphere.apk)
-
-This direct link targets release tag `1.0.0` and requires the APK asset with the exact filename:
-- `StudySphere.apk`
-
-If the uploaded asset name is different, update the link accordingly.
 
 ---
 
