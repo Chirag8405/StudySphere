@@ -739,12 +739,12 @@ fun AddEditAssignmentDialog(
                 verticalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 // Title
-                OutlinedTextField(
+                    OutlinedTextField(
                     value       = title,
                     onValueChange = { title = it; titleError = false },
                     label       = { Text("Title") },
                     isError     = titleError,
-                    supportingText = if (titleError) {{ Text("Title is required") }} else null,
+                    supportingText = { if (titleError) Text("Title is required") },
                     singleLine  = true,
                     modifier    = Modifier.fillMaxWidth(),
                     shape       = RoundedCornerShape(12.dp)

@@ -406,7 +406,7 @@ private fun AddEditSubjectDialog(
                     onValueChange = { name = it; nameError = false },
                     label         = { Text("Subject Name") },
                     isError       = nameError,
-                    supportingText = if (nameError) {{ Text("Name is required") }} else null,
+                    supportingText = { if (nameError) Text("Name is required") },
                     singleLine    = true,
                     modifier      = Modifier.fillMaxWidth(),
                     shape         = RoundedCornerShape(12.dp)

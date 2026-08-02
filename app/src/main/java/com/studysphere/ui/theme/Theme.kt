@@ -119,7 +119,7 @@ fun StudySphereTheme(
     CompositionLocalProvider(LocalDarkTheme provides darkTheme) {
         MaterialTheme(
             colorScheme = colorScheme,
-            typography  = AppTypography,
+            typography  = StudySphereTypography,
             content     = content
         )
     }
