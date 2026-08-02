@@ -47,3 +47,58 @@ jobs:
           asset_path: app/build/outputs/apk/debug/app-debug.apk
           asset_name: StudySphere-${{ github.ref_name }}-debug.apk
           asset_content_type: application/vnd.android.package-archive
+
+      - name: Checkout `main` branch for README update
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update README release link
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          REPO="${REPO}"
+          TAG="${TAG}"
+          infile=README.md
+          tmpfile="${infile}.tmp"
+
+          awk -v repo="$REPO" -v tag="$TAG" '
+          BEGIN{updated=0}
+          {
+            if ($0 ~ /^Stable release \(v[0-9.]+\):$/) {
+              print $0
+              if (getline > 0) {
+                # replace the following link line
+                print "[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag"-debug.apk)"
+                updated=1
+              }
+            } else {
+              print $0
+            }
+          }
+          END{
+            if (updated==0) {
+              # prepend release block
+              print "Stable release ("tag"):\n[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag"-debug.apk)\n" > ".README_prepend"
+            }
+          }' "$infile" > "$tmpfile"
+
+          if [ -f ".README_prepend" ]; then
+            cat .README_prepend "$tmpfile" > "$infile".new && mv "$infile".new "$infile" && rm .README_prepend
+            rm -f "$tmpfile"
+          else
+            mv "$tmpfile" "$infile"
+          fi
+
+      - name: Commit and push README update
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add README.md
+          git commit -m "chore: update README release link to ${TAG}" || echo "No changes to commit"
+          git push origin main || echo "Push failed"
