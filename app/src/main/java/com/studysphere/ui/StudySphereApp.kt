@@ -19,7 +19,7 @@ import com.studysphere.ui.screens.assignments.AssignmentsScreen
 import com.studysphere.ui.screens.attendance.AttendanceDetailScreen
 import com.studysphere.ui.screens.attendance.AttendanceScreen
 import com.studysphere.ui.screens.dashboard.DashboardScreen
-import com.studysphere.ui.theme.LocalDarkTheme
+import com.studysphere.ui.screens.settings.SettingsScreen
 import com.studysphere.viewmodel.MainViewModel
 
 data class BottomNavItem(
@@ -30,41 +30,44 @@ data class BottomNavItem(
 )
 
 val bottomNavItems = listOf(
-    BottomNavItem("Home",        Screen.Dashboard.route,   Icons.Rounded.Home,            Icons.Rounded.HomeWork),
-    BottomNavItem("Attendance",  Screen.Attendance.route,  Icons.Rounded.HowToReg,        Icons.Rounded.AppRegistration),
-    BottomNavItem("Assignments", Screen.Assignments.route, Icons.Rounded.Assignment,       Icons.Rounded.Assignment),
-    BottomNavItem("Subjects",    Screen.Subjects.route,    Icons.Rounded.LibraryBooks,    Icons.Rounded.LibraryBooks),
+    BottomNavItem("Home",        Screen.Dashboard.route,   Icons.Rounded.Home,         Icons.Rounded.HomeWork),
+    BottomNavItem("Attendance",  Screen.Attendance.route,  Icons.Rounded.HowToReg,     Icons.Rounded.AppRegistration),
+    BottomNavItem("Assignments", Screen.Assignments.route, Icons.Rounded.Assignment,   Icons.Rounded.Assignment),
+    BottomNavItem("Subjects",    Screen.Subjects.route,    Icons.Rounded.LibraryBooks, Icons.Rounded.LibraryBooks),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun StudySphereApp(viewModel: MainViewModel) {
-    val navController = rememberNavController()
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    val currentDestination = navBackStackEntry?.destination
-    val isDark = LocalDarkTheme.current
+    val navController          = rememberNavController()
+    val navBackStackEntry      by navController.currentBackStackEntryAsState()
+    val currentDestination     = navBackStackEntry?.destination
+    val currentRoute           = currentDestination?.route ?: ""
 
-    // Top bar titles
-    val currentRoute = currentDestination?.route ?: ""
     val topBarTitle = when {
-        currentRoute == Screen.Dashboard.route  -> "Home"
-        currentRoute == Screen.Attendance.route -> "Attendance"
-        currentRoute.startsWith("attendance_detail/") -> "Subject Details"
-        currentRoute == Screen.Assignments.route -> "Assignments"
-        currentRoute == Screen.Subjects.route    -> "Subjects"
-        else -> "StudySphere"
+        currentRoute == Screen.Dashboard.route          -> "Home"
+        currentRoute == Screen.Attendance.route         -> "Attendance"
+        currentRoute.startsWith("attendance_detail/")  -> "Subject Details"
+        currentRoute == Screen.Assignments.route        -> "Assignments"
+        currentRoute == Screen.Subjects.route           -> "Subjects"
+        currentRoute == Screen.Settings.route           -> "Settings"
+        else                                            -> "StudySphere"
     }
 
-    val showBottomBar = bottomNavItems.any { it.route == currentRoute }
-    val showBackButton = currentRoute.startsWith("attendance_detail/")
+    val showBottomBar  = bottomNavItems.any { it.route == currentRoute }
+    val showBackButton = currentRoute.startsWith("attendance_detail/") ||
+                         currentRoute == Screen.Settings.route
+
+    // Show settings icon only on bottom-nav screens (not on Settings itself)
+    val showSettingsIcon = showBottomBar
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = topBarTitle,
-                        style = MaterialTheme.typography.headlineMedium,
+                        text       = topBarTitle,
+                        style      = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.SemiBold
                     )
                 },
@@ -76,19 +79,20 @@ fun StudySphereApp(viewModel: MainViewModel) {
                     }
                 },
                 actions = {
-                    // Theme toggle
-                    IconButton(onClick = { viewModel.toggleTheme() }) {
-                        Icon(
-                            imageVector = if (isDark) Icons.Rounded.LightMode else Icons.Rounded.DarkMode,
-                            contentDescription = if (isDark) "Switch to light mode" else "Switch to dark mode"
-                        )
+                    if (showSettingsIcon) {
+                        IconButton(onClick = { navController.navigate(Screen.Settings.route) }) {
+                            Icon(
+                                imageVector        = Icons.Rounded.Settings,
+                                contentDescription = "Settings"
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    containerColor          = MaterialTheme.colorScheme.background,
+                    titleContentColor       = MaterialTheme.colorScheme.onBackground,
                     navigationIconContentColor = MaterialTheme.colorScheme.onBackground,
-                    actionIconContentColor = MaterialTheme.colorScheme.onBackground
+                    actionIconContentColor  = MaterialTheme.colorScheme.onBackground
                 )
             )
         },
@@ -107,14 +111,14 @@ fun StudySphereApp(viewModel: MainViewModel) {
                         NavigationBarItem(
                             icon = {
                                 Icon(
-                                    imageVector = if (selected) item.selectedIcon else item.unselectedIcon,
+                                    imageVector     = if (selected) item.selectedIcon else item.unselectedIcon,
                                     contentDescription = item.label
                                 )
                             },
                             label = {
                                 Text(
-                                    text = item.label,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    text       = item.label,
+                                    style      = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                                 )
                             },
@@ -123,11 +127,11 @@ fun StudySphereApp(viewModel: MainViewModel) {
                                 if (selected) return@NavigationBarItem
 
                                 if (item.route == Screen.Dashboard.route) {
-                                    val poppedToDashboard = navController.popBackStack(
+                                    val popped = navController.popBackStack(
                                         Screen.Dashboard.route,
                                         inclusive = false
                                     )
-                                    if (!poppedToDashboard) {
+                                    if (!popped) {
                                         navController.navigate(Screen.Dashboard.route) {
                                             launchSingleTop = true
                                         }
@@ -164,13 +168,13 @@ fun StudySphereApp(viewModel: MainViewModel) {
         ) {
             composable(Screen.Dashboard.route) {
                 DashboardScreen(
-                    viewModel              = viewModel,
-                    onNavigateToAttendance = { navController.navigate(Screen.Attendance.route) },
-                    onNavigateToAssignments = { navController.navigate(Screen.Assignments.route) },
+                    viewModel                 = viewModel,
+                    onNavigateToAttendance    = { navController.navigate(Screen.Attendance.route) },
+                    onNavigateToAssignments   = { navController.navigate(Screen.Assignments.route) },
                     onNavigateToSubjectDetail = { subjectId ->
                         navController.navigate(Screen.AttendanceDetail.createRoute(subjectId))
                     },
-                    onNavigateToSubjects   = { navController.navigate(Screen.Subjects.route) }
+                    onNavigateToSubjects      = { navController.navigate(Screen.Subjects.route) }
                 )
             }
             composable(Screen.Attendance.route) {
@@ -185,9 +189,9 @@ fun StudySphereApp(viewModel: MainViewModel) {
             composable(Screen.AttendanceDetail.route) { backStackEntry ->
                 val subjectId = backStackEntry.arguments?.getString("subjectId")?.toLongOrNull() ?: 0L
                 AttendanceDetailScreen(
-                    subjectId  = subjectId,
-                    viewModel  = viewModel,
-                    onBack     = { navController.popBackStack() }
+                    subjectId = subjectId,
+                    viewModel = viewModel,
+                    onBack    = { navController.popBackStack() }
                 )
             }
             composable(Screen.Assignments.route) {
@@ -195,6 +199,12 @@ fun StudySphereApp(viewModel: MainViewModel) {
             }
             composable(Screen.Subjects.route) {
                 SubjectsScreen(viewModel = viewModel)
+            }
+            composable(Screen.Settings.route) {
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onBack    = { navController.popBackStack() }
+                )
             }
         }
     }

@@ -19,6 +19,9 @@ class StudySphereRepository(
 
     val allSubjects: Flow<List<Subject>> = subjectDao.getAllSubjects()
 
+    suspend fun getAllSubjectsList(): List<Subject> = subjectDao.getAllSubjectsList()
+    suspend fun getSubjectByName(name: String): Subject? = subjectDao.getSubjectByName(name)
+
     suspend fun insertSubject(subject: Subject) = subjectDao.insertSubject(subject)
     suspend fun updateSubject(subject: Subject) = subjectDao.updateSubject(subject)
     suspend fun deleteSubject(subject: Subject) {
@@ -32,6 +35,8 @@ class StudySphereRepository(
     // ── Lectures ─────────────────────────────────────────────────────────────
 
     val allLectures: Flow<List<Lecture>> = lectureDao.getAllLectures()
+
+    suspend fun getAllLecturesList(): List<Lecture> = lectureDao.getAllLecturesList()
 
     fun getLecturesByDay(dayOfWeek: Int) = lectureDao.getLecturesByDay(dayOfWeek)
     fun getLecturesBySubject(subjectId: Long) = lectureDao.getLecturesBySubject(subjectId)
@@ -47,6 +52,9 @@ class StudySphereRepository(
 
     fun getRecordsByDate(date: String) = attendanceDao.getRecordsByDate(date)
     fun getRecordsBySubject(subjectId: Long) = attendanceDao.getRecordsBySubject(subjectId)
+
+    suspend fun getAllAttendanceRecordsList(): List<AttendanceRecord> =
+        attendanceDao.getAllRecordsList()
 
     suspend fun markAttendance(
         lectureId: Long,
@@ -77,32 +85,42 @@ class StudySphereRepository(
     val allAssignments: Flow<List<Assignment>> = assignmentDao.getAllAssignments()
     val pendingAssignments: Flow<List<Assignment>> = assignmentDao.getPendingAssignments()
 
+    suspend fun getAllAssignmentsList(): List<Assignment> = assignmentDao.getAllAssignmentsList()
+
     fun getAssignmentsBySubject(subjectId: Long) = assignmentDao.getAssignmentsBySubject(subjectId)
 
     suspend fun insertAssignment(assignment: Assignment) = assignmentDao.insertAssignment(assignment)
     suspend fun updateAssignment(assignment: Assignment) = assignmentDao.updateAssignment(assignment)
     suspend fun deleteAssignment(assignment: Assignment) = assignmentDao.deleteAssignment(assignment)
 
+    // ── Bulk Resets ───────────────────────────────────────────────────────────
+
+    // Feature 5: New Semester Reset — deletes all lectures + all attendance records
+    suspend fun clearSemesterData() {
+        lectureDao.deleteAllLectures()
+        attendanceDao.deleteAllRecords()
+    }
+
+    // Feature 6: Clear All Assignments
+    suspend fun clearAllAssignments() {
+        assignmentDao.deleteAllAssignments()
+    }
+
     // ── Attendance Intelligence ───────────────────────────────────────────────
 
     suspend fun getSubjectAttendanceSummary(subject: Subject): SubjectAttendanceSummary {
-        val present = attendanceDao.getPresentCount(subject.id)
-        val total   = attendanceDao.getTotalNonCancelledCount(subject.id)
+        val present   = attendanceDao.getPresentCount(subject.id)
+        val total     = attendanceDao.getTotalNonCancelledCount(subject.id)
         val cancelled = attendanceDao.getCancelledCount(subject.id)
 
         val percentage = if (total == 0) 100f else (present.toFloat() / total.toFloat()) * 100f
         val minPct = subject.minAttendancePercent / 100f
 
         // How many can be skipped while staying above threshold?
-        // present / (total + extra) >= minPct => extra <= present/minPct - total
         val canSkip = if (total == 0) 0
         else max(0, ((present / minPct) - total).toInt())
 
         // How many consecutive classes must be attended to recover?
-        // (present + needed) / (total + needed) >= minPct
-        // present + needed >= minPct * total + minPct * needed
-        // needed * (1 - minPct) >= minPct * total - present
-        // needed >= (minPct * total - present) / (1 - minPct)
         val mustAttend = if (percentage >= subject.minAttendancePercent) 0
         else {
             val numerator = minPct * total - present
@@ -119,30 +137,30 @@ class StudySphereRepository(
         }
 
         return SubjectAttendanceSummary(
-            subject     = subject,
+            subject      = subject,
             totalClasses = total,
-            attended    = present,
-            cancelled   = cancelled,
-            percentage  = percentage,
-            canSkip     = canSkip,
-            mustAttend  = mustAttend,
-            riskLevel   = riskLevel
+            attended     = present,
+            cancelled    = cancelled,
+            percentage   = percentage,
+            canSkip      = canSkip,
+            mustAttend   = mustAttend,
+            riskLevel    = riskLevel
         )
     }
 
     // ── Today Lectures ────────────────────────────────────────────────────────
 
     fun getTodayLectures(subjects: List<Subject>): Flow<List<TodayLecture>> {
-        val today = LocalDate.now()
-        val todayDow = today.dayOfWeek.value
-        val todayStr = today.toString()
+        val today     = LocalDate.now()
+        val todayDow  = today.dayOfWeek.value
+        val todayStr  = today.toString()
 
         return lectureDao.getLecturesByDay(todayDow).combine(
             attendanceDao.getRecordsByDate(todayStr)
         ) { lectures, records ->
             lectures.mapNotNull { lecture ->
                 val subject = subjects.find { it.id == lecture.subjectId } ?: return@mapNotNull null
-                val record = records.find { it.lectureId == lecture.id }
+                val record  = records.find { it.lectureId == lecture.id }
                 TodayLecture(lecture, subject, record)
             }.sortedBy { it.lecture.startTimeHour * 60 + it.lecture.startTimeMinute }
         }
@@ -158,7 +176,7 @@ class StudySphereRepository(
                     ?: if (assignment.subjectId == OTHER_SUBJECT_ID) otherSubject() else null
                     ?: return@mapNotNull null
                 val dueDate = LocalDate.parse(assignment.dueDate)
-                val days = ChronoUnit.DAYS.between(today, dueDate)
+                val days    = ChronoUnit.DAYS.between(today, dueDate)
                 UpcomingAssignment(assignment, subject, days)
             }.sortedBy { it.daysUntilDue }
         }
