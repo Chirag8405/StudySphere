@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.collectAsState
@@ -20,7 +21,11 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val viewModel: MainViewModel = viewModel()
-            val isDark by viewModel.isDarkMode.collectAsState()
+            // isDarkModeNullable: null = system default, true = dark, false = light
+            val isDarkNullable by viewModel.isDarkModeNullable.collectAsState()
+            val systemDark     = isSystemInDarkTheme()
+            val isDark         = isDarkNullable ?: systemDark
+
             StudySphereTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     StudySphereApp(viewModel = viewModel)

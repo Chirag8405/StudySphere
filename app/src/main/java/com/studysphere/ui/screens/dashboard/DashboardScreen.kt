@@ -38,12 +38,13 @@ fun DashboardScreen(
     onNavigateToSubjectDetail: (Long) -> Unit,
     onNavigateToSubjects: () -> Unit
 ) {
-    val subjects        by viewModel.subjects.collectAsState()
-    val todayLectures   by viewModel.todayLectures.collectAsState()
-    val upcomingAssign  by viewModel.upcomingAssignments.collectAsState()
-    val summaries       by viewModel.attendanceSummariesRefreshed.collectAsState()
-    val isDark          = LocalDarkTheme.current
-    val refreshing      by viewModel.isRefreshing.collectAsState()
+    val subjects           by viewModel.subjects.collectAsState()
+    val todayLectures      by viewModel.todayLectures.collectAsState()
+    val upcomingAssign     by viewModel.upcomingAssignments.collectAsState()
+    val summaries          by viewModel.attendanceSummariesRefreshed.collectAsState()
+    val isDark             = LocalDarkTheme.current
+    val refreshing         by viewModel.isRefreshing.collectAsState()
+    val deadlineWindowDays by viewModel.deadlineWindowDays.collectAsState()
 
     val today = LocalDate.now()
     val dateStr = today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM"))
@@ -72,7 +73,7 @@ fun DashboardScreen(
                 StatsRow(
                     subjects      = subjects,
                     summaries     = summaries,
-                    upcomingCount = upcomingAssign.count { it.daysUntilDue in 0..3 },
+                    upcomingCount = upcomingAssign.count { it.daysUntilDue in 0..deadlineWindowDays },
                     modifier      = Modifier.padding(horizontal = 16.dp)
                 )
                 Spacer(Modifier.height(20.dp))
