@@ -48,10 +48,18 @@ enum class AttendanceStatus { PRESENT, ABSENT, CANCELLED }
 @Entity(tableName = "attendance_records")
 data class AttendanceRecord(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val lectureId: Long,
+    val lectureId: Long,         // -1 if extra/one-time lecture
     val subjectId: Long,
     val date: String,            // ISO-8601 "yyyy-MM-dd"
-    val status: AttendanceStatus = AttendanceStatus.PRESENT
+    val status: AttendanceStatus = AttendanceStatus.PRESENT,
+
+    // One-time session details (used if lectureId == -1)
+    val isExtra: Boolean = false,
+    val startTimeHour: Int = 0,
+    val startTimeMinute: Int = 0,
+    val endTimeHour: Int = 0,
+    val endTimeMinute: Int = 0,
+    val room: String = ""
 )
 
 // ─── Assignment ───────────────────────────────────────────────────────────────

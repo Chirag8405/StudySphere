@@ -62,7 +62,12 @@ class StudySphereRepository(
         date: String,
         status: AttendanceStatus
     ) {
-        val existing = attendanceDao.getRecordByLectureAndDate(lectureId, date)
+        val existing = if (lectureId != -1L) {
+            attendanceDao.getRecordByLectureAndDate(lectureId, date)
+        } else {
+            null // Extra lectures are always unique records unless we add more logic
+        }
+
         if (existing != null) {
             attendanceDao.updateRecord(existing.copy(status = status))
         } else {
@@ -75,6 +80,38 @@ class StudySphereRepository(
                 )
             )
         }
+    }
+
+    suspend fun markExtraAttendance(
+        subjectId: Long,
+        date: String,
+        status: AttendanceStatus,
+        startH: Int, startM: Int,
+        endH: Int, endM: Int,
+        room: String
+    ) {
+        attendanceDao.insertRecord(
+            AttendanceRecord(
+                lectureId = -1L,
+                subjectId = subjectId,
+                date = date,
+                status = status,
+                isExtra = true,
+                startTimeHour = startH,
+                startTimeMinute = startM,
+                endTimeHour = endH,
+                endTimeMinute = endM,
+                room = room
+            )
+        )
+    }
+
+    suspend fun updateAttendanceStatus(record: AttendanceRecord, status: AttendanceStatus) {
+        attendanceDao.updateRecord(record.copy(status = status))
+    }
+
+    suspend fun deleteAttendanceRecord(record: AttendanceRecord) {
+        attendanceDao.deleteRecord(record)
     }
 
     suspend fun getRecordByLectureAndDate(lectureId: Long, date: String) =
