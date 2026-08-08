@@ -239,7 +239,7 @@ fun SettingsScreen(
                 Column {
                     SettingsActionRow(
                         icon        = Icons.Rounded.FileDownload,
-                        iconTint    = MaterialTheme.colorScheme.primary,
+                        iconTint    = MaterialTheme.colorScheme.onSurfaceVariant,
                         title       = "Export Timetable",
                         subtitle    = "JSON file with subjects & lectures",
                         onClick     = {
@@ -249,7 +249,7 @@ fun SettingsScreen(
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingsActionRow(
                         icon        = Icons.Rounded.FileUpload,
-                        iconTint    = MaterialTheme.colorScheme.primary,
+                        iconTint    = MaterialTheme.colorScheme.onSurfaceVariant,
                         title       = "Import Timetable",
                         subtitle    = "Restore subjects & lectures",
                         onClick     = {
@@ -362,12 +362,12 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                                .background(MaterialTheme.colorScheme.surfaceVariant),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Rounded.AutoStories, null,
                                  Modifier.size(28.dp),
-                                 tint = MaterialTheme.colorScheme.primary)
+                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Column {
                             Text(
