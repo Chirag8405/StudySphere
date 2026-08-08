@@ -200,6 +200,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun markAttendance(lectureId: Long, subjectId: Long, date: String, status: AttendanceStatus) {
         viewModelScope.launch {
             repository.markAttendance(lectureId, subjectId, date, status)
+            refreshSummaries()
+        }
+    }
+
+    fun markExtraAttendance(
+        subjectId: Long, date: String, status: AttendanceStatus,
+        startH: Int, startM: Int, endH: Int, endM: Int, room: String
+    ) {
+        viewModelScope.launch {
+            repository.markExtraAttendance(subjectId, date, status, startH, startM, endH, endM, room)
+            refreshSummaries()
+        }
+    }
+
+    fun updateAttendanceStatus(record: AttendanceRecord, status: AttendanceStatus) {
+        viewModelScope.launch {
+            repository.updateAttendanceStatus(record, status)
+            refreshSummaries()
+        }
+    }
+
+    fun deleteAttendanceRecord(record: AttendanceRecord) {
+        viewModelScope.launch {
+            repository.deleteAttendanceRecord(record)
+            refreshSummaries()
         }
     }
 
@@ -588,7 +613,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                             lectureId = remappedLecId,
                             subjectId = remappedSubId,
                             date      = r.getString("date"),
-                            status    = status
+                            status    = status,
+                            isExtra   = r.optBoolean("isExtra", false),
+                            startTimeHour   = r.optInt("startTimeHour", 0),
+                            startTimeMinute = r.optInt("startTimeMinute", 0),
+                            endTimeHour     = r.optInt("endTimeHour", 0),
+                            endTimeMinute   = r.optInt("endTimeMinute", 0),
+                            room            = r.optString("room", "")
                         )
                     )
                     if (newRowId != -1L) recordsAdded++
@@ -712,6 +743,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 put("subjectId", r.subjectId)
                 put("date", r.date)
                 put("status", r.status.name)
+                put("isExtra", r.isExtra)
+                put("startTimeHour", r.startTimeHour)
+                put("startTimeMinute", r.startTimeMinute)
+                put("endTimeHour", r.endTimeHour)
+                put("endTimeMinute", r.endTimeMinute)
+                put("room", r.room)
             })
         }
         root.put("attendanceRecords", attArr)

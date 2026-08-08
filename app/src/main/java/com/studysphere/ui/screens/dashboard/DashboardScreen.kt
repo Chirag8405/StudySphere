@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studysphere.data.models.*
@@ -25,6 +26,7 @@ import com.studysphere.ui.components.*
 import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.MainViewModel
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
@@ -232,6 +234,16 @@ fun DashboardScreen(
 
 @Composable
 private fun DashboardHeader(dateStr: String, isDark: Boolean) {
+    val hour = LocalTime.now().hour
+    val greeting = when (hour) {
+        in 5..8 -> "Up Early?"
+        in 9..11 -> "Good Morning"
+        in 12..16 -> "Good Afternoon"
+        in 17..20 -> "Good Evening"
+        in 21..23 -> "Still Up?"
+        else -> "Up Late?"
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -248,40 +260,18 @@ private fun DashboardHeader(dateStr: String, isDark: Boolean) {
             .padding(horizontal = 16.dp, vertical = 20.dp)
     ) {
         Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = "StudySphere",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoStories,
-                        contentDescription = "App Icon",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-            }
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+                letterSpacing = (-0.5).sp
+            )
+            Text(
+                text = dateStr,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -340,7 +330,9 @@ private fun StatCard(
 ) {
     SphereCard(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -354,11 +346,20 @@ private fun StatCard(
                 Icon(icon, contentDescription = null,
                      modifier = Modifier.size(17.dp), tint = color)
             }
-            Text(value, style = MaterialTheme.typography.titleMedium,
-                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                 maxLines = 1)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }

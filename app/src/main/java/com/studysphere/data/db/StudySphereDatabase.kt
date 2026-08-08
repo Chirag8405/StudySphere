@@ -6,7 +6,7 @@ import com.studysphere.data.models.*
 
 @Database(
     entities = [Subject::class, Lecture::class, AttendanceRecord::class, Assignment::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -25,7 +25,9 @@ abstract class StudySphereDatabase : RoomDatabase() {
                     context.applicationContext,
                     StudySphereDatabase::class.java,
                     "studysphere.db"
-                ).build().also { INSTANCE = it }
+                )
+                .fallbackToDestructiveMigration()
+                .build().also { INSTANCE = it }
             }
         }
     }
