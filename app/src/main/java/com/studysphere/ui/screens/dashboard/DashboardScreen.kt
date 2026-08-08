@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studysphere.data.models.*
@@ -329,7 +330,9 @@ private fun StatCard(
 ) {
     SphereCard(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -343,11 +346,20 @@ private fun StatCard(
                 Icon(icon, contentDescription = null,
                      modifier = Modifier.size(17.dp), tint = color)
             }
-            Text(value, style = MaterialTheme.typography.titleMedium,
-                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                 maxLines = 1)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
