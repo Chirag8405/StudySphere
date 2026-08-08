@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
@@ -41,6 +42,7 @@ fun AttendanceDetailScreen(
     val summary   = summaries.find { it.subject.id == subjectId }
 
     var showMarkDialog by remember { mutableStateOf(false) }
+    var recordToDelete by remember { mutableStateOf<AttendanceRecord?>(null) }
 
     LaunchedEffect(subjectId) { viewModel.refreshSummaries() }
 
@@ -63,15 +65,13 @@ fun AttendanceDetailScreen(
 
     Scaffold(
         floatingActionButton = {
-            if (lectures.isNotEmpty()) {
-                ExtendedFloatingActionButton(
-                    onClick = { showMarkDialog = true },
-                    icon    = { Icon(Icons.Rounded.EditCalendar, null) },
-                    text    = { Text("Mark Attendance") },
-                    containerColor = subjectColor,
-                    contentColor   = Color.White
-                )
-            }
+            ExtendedFloatingActionButton(
+                onClick = { showMarkDialog = true },
+                icon    = { Icon(Icons.Rounded.EditCalendar, null) },
+                text    = { Text("Mark Attendance") },
+                containerColor = subjectColor,
+                contentColor   = Color.White
+            )
         }
     ) { innerPadding ->
         LazyColumn(
@@ -121,14 +121,9 @@ fun AttendanceDetailScreen(
                             lectures   = lectures,
                             subject    = subject,
                             onStatusChange = { record, newStatus ->
-                                viewModel.markAttendance(
-                                    lectureId = record.lectureId,
-                                    subjectId = subjectId,
-                                    date      = record.date,
-                                    status    = newStatus
-                                )
-                                viewModel.refreshSummaries()
-                            }
+                                viewModel.updateAttendanceStatus(record, newStatus)
+                            },
+                            onDelete = { recordToDelete = it }
                         )
                     }
                 }
@@ -139,14 +134,38 @@ fun AttendanceDetailScreen(
     // Mark attendance dialog
     if (showMarkDialog) {
         MarkAttendanceDialog(
-            subject   = subject,
-            lectures  = lectures,
+            subject      = subject,
+            lectures     = lectures,
             subjectColor = subjectColor,
-            onDismiss = { showMarkDialog = false },
-            onMark    = { lectureId, date, status ->
+            onDismiss    = { showMarkDialog = false },
+            onMark       = { lectureId, date, status ->
                 viewModel.markAttendance(lectureId, subjectId, date, status)
-                viewModel.refreshSummaries()
                 showMarkDialog = false
+            },
+            onMarkExtra = { date, status, startH, startM, endH, endM, room ->
+                viewModel.markExtraAttendance(subjectId, date, status, startH, startM, endH, endM, room)
+                showMarkDialog = false
+            }
+        )
+    }
+
+    // Delete confirmation
+    if (recordToDelete != null) {
+        AlertDialog(
+            onDismissRequest = { recordToDelete = null },
+            title = { Text("Delete Record?") },
+            text = { Text("This will permanently remove this attendance record. The subject and timetable will not be affected.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        recordToDelete?.let { viewModel.deleteAttendanceRecord(it) }
+                        recordToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text("Delete") }
+            },
+            dismissButton = {
+                TextButton(onClick = { recordToDelete = null }) { Text("Cancel") }
             }
         )
     }
@@ -293,7 +312,8 @@ private fun AttendanceDayGroup(
     records: List<AttendanceRecord>,
     lectures: List<Lecture>,
     subject: Subject,
-    onStatusChange: (AttendanceRecord, AttendanceStatus) -> Unit
+    onStatusChange: (AttendanceRecord, AttendanceStatus) -> Unit,
+    onDelete: (AttendanceRecord) -> Unit
 ) {
     val parsedDate = remember(date) {
         try {
@@ -312,7 +332,8 @@ private fun AttendanceDayGroup(
             AttendanceRecordRow(
                 record  = record,
                 lecture = lecture,
-                onStatusChange = { newStatus -> onStatusChange(record, newStatus) }
+                onStatusChange = { newStatus -> onStatusChange(record, newStatus) },
+                onDelete = { onDelete(record) }
             )
         }
     }
@@ -322,7 +343,8 @@ private fun AttendanceDayGroup(
 private fun AttendanceRecordRow(
     record: AttendanceRecord,
     lecture: Lecture?,
-    onStatusChange: (AttendanceStatus) -> Unit
+    onStatusChange: (AttendanceStatus) -> Unit,
+    onDelete: () -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -335,7 +357,15 @@ private fun AttendanceRecordRow(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (lecture != null) {
+                    if (record.isExtra) {
+                        val timeStr = "%02d:%02d".format(record.startTimeHour, record.startTimeMinute)
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Rounded.Star, null, Modifier.size(14.dp), tint = Amber500)
+                            Text(timeStr, style = MaterialTheme.typography.bodySmall,
+                                 fontWeight = FontWeight.Medium,
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else if (lecture != null) {
                         val timeStr = "%02d:%02d".format(lecture.startTimeHour, lecture.startTimeMinute)
                         Text(timeStr, style = MaterialTheme.typography.bodySmall,
                              fontWeight = FontWeight.Medium,
@@ -351,27 +381,44 @@ private fun AttendanceRecordRow(
                 )
             }
             AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    if (record.isExtra && record.room.isNotBlank()) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Icon(Icons.Rounded.LocationOn, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(record.room, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+
                     Text("Change Status", style = MaterialTheme.typography.labelSmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        AttendanceStatus.values().forEach { status ->
-                            val isSelected = record.status == status
-                            val (chipColor, label) = when (status) {
-                                AttendanceStatus.PRESENT   -> Green500 to "Present"
-                                AttendanceStatus.ABSENT    -> Red500 to "Absent"
-                                AttendanceStatus.CANCELLED -> Amber500 to "Cancelled"
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            AttendanceStatus.values().forEach { status ->
+                                val isSelected = record.status == status
+                                val (chipColor, label) = when (status) {
+                                    AttendanceStatus.PRESENT   -> Green500 to "Present"
+                                    AttendanceStatus.ABSENT    -> Red500 to "Absent"
+                                    AttendanceStatus.CANCELLED -> Amber500 to "Cancelled"
+                                }
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick  = { if (!isSelected) onStatusChange(status) },
+                                    label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                    colors   = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = chipColor.copy(0.18f),
+                                        selectedLabelColor     = chipColor
+                                    ),
+                                    shape    = RoundedCornerShape(8.dp)
+                                )
                             }
-                            FilterChip(
-                                selected = isSelected,
-                                onClick  = { if (!isSelected) onStatusChange(status) },
-                                label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
-                                colors   = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = chipColor.copy(0.18f),
-                                    selectedLabelColor     = chipColor
-                                ),
-                                shape    = RoundedCornerShape(8.dp)
-                            )
+                        }
+
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Rounded.DeleteOutline, "Delete", tint = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -387,14 +434,55 @@ private fun MarkAttendanceDialog(
     lectures: List<Lecture>,
     subjectColor: Color,
     onDismiss: () -> Unit,
-    onMark: (Long, String, AttendanceStatus) -> Unit
+    onMark: (Long, String, AttendanceStatus) -> Unit,
+    onMarkExtra: (String, AttendanceStatus, Int, Int, Int, Int, String) -> Unit
 ) {
     val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
 
+    var isExtraMode by remember { mutableStateOf(lectures.isEmpty()) }
+
     var selectedLectureId by remember { mutableStateOf(lectures.firstOrNull()?.id ?: 0L) }
+    val selectedLecture = remember(selectedLectureId, lectures) {
+        lectures.find { it.id == selectedLectureId }
+    }
+
     var selectedDate by remember { mutableStateOf(LocalDate.now().toString()) }
+
+    // When mode or lecture changes, snap selectedDate to the nearest valid date in the past
+    LaunchedEffect(isExtraMode, selectedLectureId) {
+        if (!isExtraMode && selectedLecture != null) {
+            val current = LocalDate.parse(selectedDate)
+            if (current.dayOfWeek.value != selectedLecture.dayOfWeek || current.isAfter(LocalDate.now())) {
+                // Find most recent Monday/Tuesday/etc. that is not in future
+                var date = LocalDate.now()
+                while (date.dayOfWeek.value != selectedLecture.dayOfWeek) {
+                    date = date.minusDays(1)
+                }
+                selectedDate = date.toString()
+            }
+        } else if (isExtraMode) {
+            val current = LocalDate.parse(selectedDate)
+            if (current.isAfter(LocalDate.now())) {
+                selectedDate = LocalDate.now().toString()
+            }
+        }
+    }
+
     var selectedStatus by remember { mutableStateOf(AttendanceStatus.PRESENT) }
     var showDatePicker by remember { mutableStateOf(false) }
+
+    // Extra mode state
+    var startH by remember { mutableStateOf(9) }
+    var startM by remember { mutableStateOf(0) }
+    var endH by remember { mutableStateOf(10) }
+    var endM by remember { mutableStateOf(0) }
+    var room by remember { mutableStateOf("") }
+    var showStartTimePicker by remember { mutableStateOf(false) }
+    var showEndTimePicker by remember { mutableStateOf(false) }
+
+    val isTimeValid = remember(startH, startM, endH, endM) {
+        (startH * 60 + startM) < (endH * 60 + endM)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -403,43 +491,113 @@ private fun MarkAttendanceDialog(
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SubjectColorDot(subject.colorHex, size = 10.dp)
-                Text("Mark Attendance", style = MaterialTheme.typography.headlineSmall)
+                Text(if (isExtraMode) "Extra Lecture" else "Mark Attendance",
+                     style = MaterialTheme.typography.headlineSmall)
             }
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                // Lecture selector
-                Text("Select Lecture", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    lectures.forEach { lecture ->
-                        val timeStr = "%02d:%02d – %02d:%02d".format(
-                            lecture.startTimeHour, lecture.startTimeMinute,
-                            lecture.endTimeHour, lecture.endTimeMinute
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+                // Mode Switcher
+                TabRow(
+                    selectedTabIndex = if (isExtraMode) 1 else 0,
+                    containerColor = Color.Transparent,
+                    contentColor = subjectColor,
+                    divider = {},
+                    indicator = { tabPositions ->
+                        TabRowDefaults.Indicator(
+                            Modifier.tabIndicatorOffset(tabPositions[if (isExtraMode) 1 else 0]),
+                            color = subjectColor
                         )
-                        val dayName = dayNames.getOrElse(lecture.dayOfWeek - 1) { "?" }
-                        val isSelected = selectedLectureId == lecture.id
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(
-                                    if (isSelected) subjectColor.copy(0.12f)
-                                    else MaterialTheme.colorScheme.surfaceVariant
-                                )
-                                .clickable { selectedLectureId = lecture.id }
-                                .padding(10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("$dayName · $timeStr",
-                                 style = MaterialTheme.typography.bodySmall,
-                                 color = if (isSelected) subjectColor
-                                 else MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (isSelected) {
-                                Icon(Icons.Rounded.CheckCircle, null,
-                                     Modifier.size(16.dp), tint = subjectColor)
+                    }
+                ) {
+                    Tab(selected = !isExtraMode, onClick = { isExtraMode = false }) {
+                        Text("Timetable", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
+                    }
+                    Tab(selected = isExtraMode, onClick = { isExtraMode = true }) {
+                        Text("Extra/Surprise", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
+                    }
+                }
+
+                if (!isExtraMode) {
+                    // Lecture selector
+                    Text("Select Scheduled Lecture", style = MaterialTheme.typography.labelMedium,
+                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        lectures.forEach { lecture ->
+                            val timeStr = "%02d:%02d – %02d:%02d".format(
+                                lecture.startTimeHour, lecture.startTimeMinute,
+                                lecture.endTimeHour, lecture.endTimeMinute
+                            )
+                            val dayName = dayNames.getOrElse(lecture.dayOfWeek - 1) { "?" }
+                            val isSelected = selectedLectureId == lecture.id
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        if (isSelected) subjectColor.copy(0.12f)
+                                        else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                    .clickable { selectedLectureId = lecture.id }
+                                    .padding(10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("$dayName · $timeStr",
+                                     style = MaterialTheme.typography.bodySmall,
+                                     color = if (isSelected) subjectColor
+                                     else MaterialTheme.colorScheme.onSurfaceVariant)
+                                if (isSelected) {
+                                    Icon(Icons.Rounded.CheckCircle, null,
+                                         Modifier.size(16.dp), tint = subjectColor)
+                                }
                             }
+                        }
+                    }
+                } else {
+                    // Extra lecture inputs
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text("Time & Room", style = MaterialTheme.typography.labelMedium,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedCard(
+                                onClick = { showStartTimePicker = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text("Start Time", style = MaterialTheme.typography.labelSmall)
+                                    Text("%02d:%02d".format(startH, startM), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            OutlinedCard(
+                                onClick = { showEndTimePicker = true },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Column(Modifier.padding(10.dp)) {
+                                    Text("End Time", style = MaterialTheme.typography.labelSmall)
+                                    Text("%02d:%02d".format(endH, endM), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                        OutlinedTextField(
+                            value = room,
+                            onValueChange = { room = it },
+                            label = { Text("Room / Location") },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            leadingIcon = { Icon(Icons.Rounded.LocationOn, null) }
+                        )
+
+                        if (!isTimeValid) {
+                            Text(
+                                "End time must be after start time",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(start = 4.dp)
+                            )
                         }
                     }
                 }
@@ -515,10 +673,15 @@ private fun MarkAttendanceDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    if (selectedLectureId != 0L) {
+                    if (isExtraMode) {
+                        if (isTimeValid) {
+                            onMarkExtra(selectedDate, selectedStatus, startH, startM, endH, endM, room)
+                        }
+                    } else if (selectedLectureId != 0L) {
                         onMark(selectedLectureId, selectedDate, selectedStatus)
                     }
                 },
+                enabled = if (isExtraMode) isTimeValid else selectedLectureId != 0L,
                 colors = ButtonDefaults.buttonColors(containerColor = subjectColor),
                 shape  = RoundedCornerShape(12.dp)
             ) { Text("Save") }
@@ -530,7 +693,31 @@ private fun MarkAttendanceDialog(
 
     if (showDatePicker) {
         val initialDate = selectedDate.toLocalDateOrNull() ?: LocalDate.now()
-        val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate.toEpochMillis())
+        val pickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialDate.toEpochMillis(),
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    val date = Instant.ofEpochMilli(utcTimeMillis)
+                        .atZone(ZoneId.of("UTC"))
+                        .toLocalDate()
+                    val today = LocalDate.now()
+
+                    // Rule 1: No future dates
+                    if (date.isAfter(today)) return false
+
+                    // Rule 2: If in timetable mode, only match the lecture's day of week
+                    if (!isExtraMode && selectedLecture != null) {
+                        return date.dayOfWeek.value == selectedLecture.dayOfWeek
+                    }
+
+                    return true
+                }
+
+                override fun isSelectableYear(year: Int): Boolean {
+                    return year <= LocalDate.now().year
+                }
+            }
+        )
 
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -559,6 +746,62 @@ private fun MarkAttendanceDialog(
             )
         }
     }
+
+    if (showStartTimePicker) {
+        TimePickerDialog(
+            onDismiss = { showStartTimePicker = false },
+            onTimeSelected = { h, m ->
+                startH = h
+                startM = m
+                showStartTimePicker = false
+            },
+            initialHour = startH,
+            initialMinute = startM,
+            title = "Start Time"
+        )
+    }
+
+    if (showEndTimePicker) {
+        TimePickerDialog(
+            onDismiss = { showEndTimePicker = false },
+            onTimeSelected = { h, m ->
+                endH = h
+                endM = m
+                showEndTimePicker = false
+            },
+            initialHour = endH,
+            initialMinute = endM,
+            title = "End Time"
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    onDismiss: () -> Unit,
+    onTimeSelected: (Int, Int) -> Unit,
+    initialHour: Int,
+    initialMinute: Int,
+    title: String
+) {
+    val state = rememberTimePickerState(initialHour, initialMinute, is24Hour = true)
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = { onTimeSelected(state.hour, state.minute) }) { Text("OK") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        title = { Text(title) },
+        text = {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                TimePicker(state = state)
+            }
+        }
+    )
 }
 
 private fun String.toLocalDateOrNull(): LocalDate? = runCatching { LocalDate.parse(this) }.getOrNull()
