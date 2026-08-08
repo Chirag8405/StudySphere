@@ -1,11 +1,10 @@
-name: Build and release APK
+name: Build and Release APK
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
 
-# Ensure the workflow has permission to create releases and upload assets
 permissions:
   contents: write
   packages: write
@@ -16,6 +15,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -23,56 +24,84 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Set up Gradle cache
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Calculate next version
+        id: version
+        run: |
+          latest_tag=$(git tag --list 'v*' --sort=-v:refname | head -n 1)
+          if [ -z "$latest_tag" ]; then
+            latest_tag="v0.0.0"
+          fi
+          echo "Latest tag: $latest_tag"
+          version="${latest_tag#v}"
+          IFS='.' read -r major minor patch <<< "$version"
+          patch=$((patch + 1))
+          new_tag="v${major}.${minor}.${patch}"
+          echo "New tag: $new_tag"
+          echo "tag=$new_tag" >> "$GITHUB_OUTPUT"
+          echo "version_code=$(( $(date +%s) / 60 ))" >> "$GITHUB_OUTPUT"
+
+      - name: Decode Keystore
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
+      - name: Build Release APK
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          VERSION_NAME: ${{ steps.version.outputs.tag }}
+          VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Rename APK
+        run: |
+          mkdir -p release-output
+          cp app/build/outputs/apk/release/app-release.apk \
+             release-output/StudySphere-${{ steps.version.outputs.tag }}.apk
+
+      - name: Create Git Tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release and Upload APK
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          release_name: ${{ github.ref_name }}
-          body: "Automated release for ${{ github.ref_name }}"
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: ${{ steps.version.outputs.tag }}
+          body: "Automated release for ${{ steps.version.outputs.tag }}"
           draft: false
           prerelease: false
-
-      - name: Upload APK to release
-        uses: actions/upload-release-asset@v1
+          files: release-output/StudySphere-${{ steps.version.outputs.tag }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: app/build/outputs/apk/debug/app-debug.apk
-          asset_name: StudySphere-${{ github.ref_name }}-debug.apk
-          asset_content_type: application/vnd.android.package-archive
-
-      - name: Checkout `main` branch for README update
-        uses: actions/checkout@v4
-        with:
-          ref: main
-          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update README release link
         env:
           REPO: ${{ github.repository }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
           set -euo pipefail
-          REPO="${REPO}"
-          TAG="${TAG}"
           infile=README.md
           tmpfile="${infile}.tmp"
-
           awk -v repo="$REPO" -v tag="$TAG" '
           BEGIN{updated=0}
           {
             if ($0 ~ /^Stable release \(v[0-9.]+\):$/) {
               print $0
               if (getline > 0) {
-                # replace the following link line
-                print "[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag"-debug.apk)"
+                print "[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag".apk)"
                 updated=1
               }
             } else {
@@ -81,11 +110,9 @@ jobs:
           }
           END{
             if (updated==0) {
-              # prepend release block
-              print "Stable release ("tag"):\n[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag"-debug.apk)\n" > ".README_prepend"
+              print "Stable release ("tag"):\n[StudySphere.apk](https://github.com/"repo"/releases/download/"tag"/StudySphere-"tag".apk)\n" > ".README_prepend"
             }
           }' "$infile" > "$tmpfile"
-
           if [ -f ".README_prepend" ]; then
             cat .README_prepend "$tmpfile" > "$infile".new && mv "$infile".new "$infile" && rm .README_prepend
             rm -f "$tmpfile"
@@ -100,5 +127,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add README.md
-          git commit -m "chore: update README release link to ${TAG}" || echo "No changes to commit"
+          git commit -m "chore: update README release link to ${{ steps.version.outputs.tag }}" || echo "No changes to commit"
           git push origin main || echo "Push failed"
