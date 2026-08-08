@@ -136,7 +136,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
 
@@ -144,7 +144,7 @@ fun SettingsScreen(
 
             SettingsSectionHeader("Appearance", Icons.Rounded.Palette)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     SettingsLabel("Theme")
                     ThemeSegmentedButtons(
                         selected = themeMode,
@@ -153,22 +153,20 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
             // ── 2. ATTENDANCE DEFAULTS ────────────────────────────────────────
 
-            SettingsSectionHeader("Attendance Defaults", Icons.Rounded.HowToReg)
+            SettingsSectionHeader("Attendance", Icons.Rounded.HowToReg)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // Working days
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SettingsLabel("Working days per week")
                         Text(
-                            "Used for attendance calculations on the dashboard",
+                            "Used for attendance health calculations",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             listOf(5, 6).forEach { days ->
                                 val selected = workingDays == days
                                 FilterChip(
@@ -176,16 +174,19 @@ fun SettingsScreen(
                                     onClick  = { viewModel.setWorkingDays(days) },
                                     label    = {
                                         Text(
-                                            "$days days",
+                                            "$days Days",
                                             style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                         )
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        selectedLabelColor     = MaterialTheme.colorScheme.onPrimaryContainer
+                                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                        selectedLabelColor     = Color.White,
+                                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                                     ),
-                                    shape = RoundedCornerShape(10.dp)
+                                    shape = RoundedCornerShape(10.dp),
+                                    border = null
                                 )
                             }
                         }
@@ -193,20 +194,17 @@ fun SettingsScreen(
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
             // ── 3. ASSIGNMENTS ────────────────────────────────────────────────
 
             SettingsSectionHeader("Assignments", Icons.Rounded.Assignment)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SettingsLabel("Upcoming deadline window")
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsLabel("Deadline window")
                     Text(
-                        "Assignments due within this many days appear in 'Due Soon' on the dashboard",
+                        "Days before deadline to show in 'Due Soon'",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(4.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(1, 2, 3, 5, 7).forEach { days ->
                             val selected = deadlineWindow == days
@@ -217,21 +215,22 @@ fun SettingsScreen(
                                     Text(
                                         "${days}d",
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
+                                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
                                     )
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
-                                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    selectedLabelColor     = MaterialTheme.colorScheme.onPrimaryContainer
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                                    selectedLabelColor     = Color.White,
+                                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
                                 ),
-                                shape = RoundedCornerShape(10.dp)
+                                shape = RoundedCornerShape(10.dp),
+                                border = null
                             )
                         }
                     }
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
 
             // ── 4. TIMETABLE ──────────────────────────────────────────────────
 
@@ -240,27 +239,25 @@ fun SettingsScreen(
                 Column {
                     SettingsActionRow(
                         icon        = Icons.Rounded.FileDownload,
-                        iconTint    = Indigo500,
+                        iconTint    = MaterialTheme.colorScheme.primary,
                         title       = "Export Timetable",
-                        subtitle    = "Save subjects & lectures as JSON",
+                        subtitle    = "JSON file with subjects & lectures",
                         onClick     = {
                             exportTimetableLauncher.launch("studysphere_timetable_$today.json")
                         }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingsActionRow(
                         icon        = Icons.Rounded.FileUpload,
-                        iconTint    = Indigo500,
+                        iconTint    = MaterialTheme.colorScheme.primary,
                         title       = "Import Timetable",
-                        subtitle    = "Add subjects & lectures from JSON",
+                        subtitle    = "Restore subjects & lectures",
                         onClick     = {
                             importTimetableLauncher.launch("application/json")
                         }
                     )
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
 
             // ── 5. BACKUP & RESTORE ───────────────────────────────────────────
 
@@ -269,133 +266,108 @@ fun SettingsScreen(
                 Column {
                     SettingsActionRow(
                         icon     = Icons.Rounded.FileDownload,
-                        iconTint = Green600,
-                        title    = "Export Full Backup",
-                        subtitle = "Save all data including attendance & assignments",
+                        iconTint = Green500,
+                        title    = "Full Export",
+                        subtitle = "Includes attendance & assignments",
                         onClick  = {
                             exportBackupLauncher.launch("studysphere_backup_$today.json")
                         }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingsActionRow(
                         icon     = Icons.Rounded.FileUpload,
-                        iconTint = Green600,
-                        title    = "Import / Restore Backup",
-                        subtitle = "Restore from a previously exported backup",
+                        iconTint = Green500,
+                        title    = "Restore Backup",
+                        subtitle = "Full data restoration from file",
                         onClick  = {
                             importBackupLauncher.launch("application/json")
                         }
                     )
                     if (lastBackupAt.isNotBlank()) {
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         Row(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                            modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Icon(
                                 Icons.Rounded.CloudDone,
                                 contentDescription = null,
                                 modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                tint = Green500
                             )
                             Text(
-                                "Last backup: ${formatBackupTimestamp(lastBackupAt)}",
+                                "Last: ${formatBackupTimestamp(lastBackupAt)}",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
+            // ── 6. STATISTICS ─────────────────────────────────────────────────
 
-            // ── 6. DATA STATISTICS ────────────────────────────────────────────
-
-            SettingsSectionHeader("Data Statistics", Icons.Rounded.BarChart)
+            SettingsSectionHeader("Statistics", Icons.Rounded.BarChart)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     DataStatRow("Subjects",         subjects.size.toString(),    Icons.Rounded.School)
-                    DataStatRow("Lecture Slots",    allLectures.size.toString(), Icons.Rounded.CalendarToday)
+                    DataStatRow("Schedule Slots",    allLectures.size.toString(), Icons.Rounded.CalendarToday)
                     DataStatRow("Assignments",      allAssignments.size.toString(), Icons.Rounded.Assignment)
-                    // Note: attendance records are not exposed as a count StateFlow, so show from summaries
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Icon(Icons.Rounded.CloudDone, null,
-                             Modifier.size(16.dp),
-                             tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Text(
-                            if (lastBackupAt.isBlank()) "Never backed up"
-                            else "Last backup: ${formatBackupTimestamp(lastBackupAt)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
             }
-
-            Spacer(Modifier.height(8.dp))
 
             // ── 7. DANGER ZONE ────────────────────────────────────────────────
 
             SettingsSectionHeader("Danger Zone", Icons.Rounded.Warning, tint = Red500)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
                 Column {
-                    // Feature 5: New Semester Reset
                     SettingsActionRow(
                         icon     = Icons.Rounded.RestartAlt,
                         iconTint = Amber500,
-                        title    = "New Semester Reset",
-                        subtitle = "Delete all lectures & attendance, keep subjects & assignments",
+                        title    = "New Semester",
+                        subtitle = "Clear schedule & history",
                         onClick  = { showSemesterStep1 = true }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    // Feature 6: Clear All Assignments
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingsActionRow(
                         icon     = Icons.Rounded.DeleteSweep,
                         iconTint = Red500,
-                        title    = "Clear All Assignments",
-                        subtitle = "Permanently delete every assignment",
+                        title    = "Clear Assignments",
+                        subtitle = "Delete all assignment records",
                         onClick  = { showClearAssignments = true }
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-                    // Feature 13: Reset All Data
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     SettingsActionRow(
                         icon     = Icons.Rounded.DeleteForever,
                         iconTint = Red600,
-                        title    = "Reset All Data",
-                        subtitle = "Wipe everything — subjects, attendance, assignments",
+                        title    = "Factory Reset",
+                        subtitle = "Wipe all app data permanently",
                         onClick  = { showResetStep1 = true }
                     )
                 }
             }
 
-            Spacer(Modifier.height(8.dp))
-
             // ── 8. ABOUT ──────────────────────────────────────────────────────
 
             SettingsSectionHeader("About", Icons.Rounded.Info)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(44.dp)
+                                .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer),
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(Icons.Rounded.AutoStories, null,
-                                 Modifier.size(24.dp),
-                                 tint = MaterialTheme.colorScheme.onPrimaryContainer)
+                                 Modifier.size(28.dp),
+                                 tint = MaterialTheme.colorScheme.primary)
                         }
                         Column {
                             Text(
@@ -405,30 +377,24 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
-                                "Version 1.1.0",
+                                "Version 1.2.0",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     Text(
-                        "Built with Jetpack Compose · Room · DataStore",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Developed by Chirag",
+                        "Modern Attendance & Assignment Tracker",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
                     // View on GitHub
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(10.dp))
+                            .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .clickable {
                                 val intent = Intent(
@@ -437,19 +403,19 @@ fun SettingsScreen(
                                 )
                                 context.startActivity(intent)
                             }
-                            .padding(12.dp),
+                            .padding(14.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         Icon(Icons.Rounded.OpenInNew, null,
-                             Modifier.size(18.dp),
-                             tint = MaterialTheme.colorScheme.primary)
+                             Modifier.size(20.dp),
+                             tint = MaterialTheme.colorScheme.onBackground)
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                "View on GitHub",
+                                "Open Source",
                                 style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onBackground
                             )
                             Text(
                                 "github.com/Chirag8405/StudySphere",
@@ -458,32 +424,28 @@ fun SettingsScreen(
                             )
                         }
                         Icon(Icons.Rounded.ChevronRight, null,
-                             Modifier.size(18.dp),
-                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f))
+                             Modifier.size(20.dp),
+                             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                     }
                 }
             }
 
-            // Bottom padding
-            Spacer(Modifier.height(32.dp))
+            Spacer(Modifier.height(40.dp))
         }
     }
 
     // ── Dialogs ───────────────────────────────────────────────────────────────
 
-    // Import timetable confirmation
     if (showImportTimetableConfirm) {
         AlertDialog(
             onDismissRequest = { showImportTimetableConfirm = false; pendingImportTimetableUri = null },
             shape = RoundedCornerShape(20.dp),
-            icon  = { Icon(Icons.Rounded.FileUpload, null, tint = Indigo500) },
-            title = { Text("Import Timetable?", style = MaterialTheme.typography.headlineSmall) },
+            icon  = { Icon(Icons.Rounded.FileUpload, null, tint = MaterialTheme.colorScheme.primary) },
+            title = { Text("Import Timetable?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
                 Text(
-                    "This will ADD the imported subjects and lectures to your existing data. " +
-                    "Duplicate subjects (same name) will be skipped. Continue?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    "This will add subjects and lectures to your existing data. Continue?",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             },
             confirmButton = {
@@ -496,16 +458,7 @@ fun SettingsScreen(
                             scope.launch {
                                 viewModel.importTimetable(uri, context)
                                     .onSuccess { result ->
-                                        snackbarHostState.showSnackbar(
-                                            "Imported: ${result.subjectsAdded} subjects, " +
-                                            "${result.lecturesAdded} lectures added " +
-                                            "(duplicates skipped)"
-                                        )
-                                    }
-                                    .onFailure { e ->
-                                        val msg = if (e.message == "version_mismatch") "Invalid file format"
-                                                  else "Invalid file format"
-                                        snackbarHostState.showSnackbar(msg)
+                                        snackbarHostState.showSnackbar("Imported ${result.subjectsAdded} subjects")
                                     }
                             }
                         }
@@ -514,29 +467,19 @@ fun SettingsScreen(
                 ) { Text("Continue") }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showImportTimetableConfirm = false
-                    pendingImportTimetableUri  = null
-                }) { Text("Cancel") }
+                TextButton(onClick = { showImportTimetableConfirm = false }) { Text("Cancel") }
             }
         )
     }
 
-    // Import full backup confirmation
     if (showImportBackupConfirm) {
         AlertDialog(
             onDismissRequest = { showImportBackupConfirm = false; pendingImportBackupUri = null },
             shape = RoundedCornerShape(20.dp),
-            icon  = { Icon(Icons.Rounded.Backup, null, tint = Green600) },
-            title = { Text("Restore Backup?", style = MaterialTheme.typography.headlineSmall) },
+            icon  = { Icon(Icons.Rounded.Backup, null, tint = Green500) },
+            title = { Text("Restore Backup?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This will ADD all data from the backup to your existing data. " +
-                    "Existing records are not deleted. Duplicate subjects (by name) will be " +
-                    "reused, not duplicated. Continue?",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("This will restore all records from the selected file. Continue?", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
                 Button(
@@ -547,18 +490,7 @@ fun SettingsScreen(
                         if (uri != null) {
                             scope.launch {
                                 viewModel.importFullBackup(uri, context)
-                                    .onSuccess { result ->
-                                        snackbarHostState.showSnackbar(
-                                            "Restored: ${result.subjectsAdded} subjects, " +
-                                            "${result.lecturesAdded} lectures, " +
-                                            "${result.recordsAdded} records, " +
-                                            "${result.assignmentsAdded} assignments added " +
-                                            "(duplicates skipped)"
-                                        )
-                                    }
-                                    .onFailure {
-                                        snackbarHostState.showSnackbar("Invalid file format")
-                                    }
+                                    .onSuccess { snackbarHostState.showSnackbar("Backup restored successfully") }
                             }
                         }
                     },
@@ -566,34 +498,24 @@ fun SettingsScreen(
                 ) { Text("Continue") }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    showImportBackupConfirm = false
-                    pendingImportBackupUri  = null
-                }) { Text("Cancel") }
+                TextButton(onClick = { showImportBackupConfirm = false }) { Text("Cancel") }
             }
         )
     }
 
-    // Feature 5 — Semester Reset: Step 1
     if (showSemesterStep1) {
         AlertDialog(
             onDismissRequest = { showSemesterStep1 = false },
             shape = RoundedCornerShape(20.dp),
             icon  = { Icon(Icons.Rounded.RestartAlt, null, tint = Amber500) },
-            title = { Text("Clear Semester Data?", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Semester Reset", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This will delete all lecture slots and attendance history. " +
-                    "Your subjects and assignments will be kept.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("This will clear all lectures and attendance history. Continue?", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
-                Button(
-                    onClick = { showSemesterStep1 = false; showSemesterStep2 = true },
-                    shape   = RoundedCornerShape(12.dp)
-                ) { Text("Continue") }
+                Button(onClick = { showSemesterStep1 = false; showSemesterStep2 = true }, shape = RoundedCornerShape(12.dp)) {
+                    Text("Continue")
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showSemesterStep1 = false }) { Text("Cancel") }
@@ -601,35 +523,24 @@ fun SettingsScreen(
         )
     }
 
-    // Feature 5 — Semester Reset: Step 2
     if (showSemesterStep2) {
         AlertDialog(
             onDismissRequest = { showSemesterStep2 = false },
             shape = RoundedCornerShape(20.dp),
             icon  = { Icon(Icons.Rounded.Warning, null, tint = Red500) },
-            title = { Text("Are you absolutely sure?", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Final Warning", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This cannot be undone. All lecture slots and attendance records will be permanently deleted.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("All schedule slots and attendance will be erased. This cannot be undone.", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showSemesterStep2 = false
                         viewModel.clearSemesterData()
-                        scope.launch {
-                            snackbarHostState.showSnackbar("Semester data cleared")
-                        }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor   = MaterialTheme.colorScheme.onError
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Red600, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Yes, Clear") }
+                ) { Text("Yes, Reset") }
             },
             dismissButton = {
                 TextButton(onClick = { showSemesterStep2 = false }) { Text("Cancel") }
@@ -637,33 +548,22 @@ fun SettingsScreen(
         )
     }
 
-    // Feature 6 — Clear All Assignments
     if (showClearAssignments) {
         AlertDialog(
             onDismissRequest = { showClearAssignments = false },
             shape = RoundedCornerShape(20.dp),
             icon  = { Icon(Icons.Rounded.DeleteSweep, null, tint = Red500) },
-            title = { Text("Delete All Assignments?", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Clear Assignments?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This cannot be undone. Every assignment regardless of status will be permanently removed.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Every assignment record will be permanently deleted. Continue?", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showClearAssignments = false
                         viewModel.clearAllAssignments()
-                        scope.launch {
-                            snackbarHostState.showSnackbar("All assignments deleted")
-                        }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor   = MaterialTheme.colorScheme.onError
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Red600, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
                 ) { Text("Delete All") }
             },
@@ -673,29 +573,19 @@ fun SettingsScreen(
         )
     }
 
-    // Feature 13 — Reset All Data: Step 1
     if (showResetStep1) {
         AlertDialog(
             onDismissRequest = { showResetStep1 = false },
             shape = RoundedCornerShape(20.dp),
-            icon  = { Icon(Icons.Rounded.DeleteForever, null, tint = Red500) },
-            title = { Text("Reset All Data?", style = MaterialTheme.typography.headlineSmall) },
+            icon  = { Icon(Icons.Rounded.DeleteForever, null, tint = Red600) },
+            title = { Text("Factory Reset?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This will permanently wipe all subjects, lectures, attendance records, and assignments.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Wipe ALL data? This is permanent and irreversible.", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
-                Button(
-                    onClick = { showResetStep1 = false; showResetStep2 = true },
-                    colors  = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor   = MaterialTheme.colorScheme.onError
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                ) { Text("Continue") }
+                Button(onClick = { showResetStep1 = false; showResetStep2 = true }, shape = RoundedCornerShape(12.dp)) {
+                    Text("Continue")
+                }
             },
             dismissButton = {
                 TextButton(onClick = { showResetStep1 = false }) { Text("Cancel") }
@@ -703,35 +593,24 @@ fun SettingsScreen(
         )
     }
 
-    // Feature 13 — Reset All Data: Step 2
     if (showResetStep2) {
         AlertDialog(
             onDismissRequest = { showResetStep2 = false },
             shape = RoundedCornerShape(20.dp),
             icon  = { Icon(Icons.Rounded.Warning, null, tint = Red600) },
-            title = { Text("Are you absolutely sure?", style = MaterialTheme.typography.headlineSmall) },
+            title = { Text("Absolute Final Warning", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
             text  = {
-                Text(
-                    "This action CANNOT be undone. All your data will be permanently erased.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Text("Everything will be erased. Are you sure?", style = MaterialTheme.typography.bodyMedium)
             },
             confirmButton = {
                 Button(
                     onClick = {
                         showResetStep2 = false
                         viewModel.clearAllData()
-                        scope.launch {
-                            snackbarHostState.showSnackbar("All data has been reset")
-                        }
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error,
-                        contentColor   = MaterialTheme.colorScheme.onError
-                    ),
+                    colors = ButtonDefaults.buttonColors(containerColor = Red600, contentColor = Color.White),
                     shape = RoundedCornerShape(12.dp)
-                ) { Text("Yes, Reset Everything") }
+                ) { Text("Yes, Wipe Everything") }
             },
             dismissButton = {
                 TextButton(onClick = { showResetStep2 = false }) { Text("Cancel") }
@@ -746,18 +625,18 @@ fun SettingsScreen(
 private fun SettingsSectionHeader(
     title: String,
     icon: ImageVector,
-    tint: Color = MaterialTheme.colorScheme.primary
+    tint: Color = MaterialTheme.colorScheme.onBackground
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+        modifier = Modifier.padding(top = 4.dp, bottom = 0.dp)
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = tint)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(16.dp), tint = tint.copy(alpha = 0.7f))
         Text(
             text  = title,
             style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = tint
         )
     }
@@ -768,7 +647,7 @@ private fun SettingsLabel(text: String) {
     Text(
         text  = text,
         style = MaterialTheme.typography.bodyMedium,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onBackground
     )
 }
@@ -785,29 +664,29 @@ private fun SettingsActionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(40.dp)
                 .clip(RoundedCornerShape(10.dp))
-                .background(iconTint.copy(alpha = 0.12f)),
+                .background(iconTint.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
         ) {
-            Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = iconTint)
+            Icon(icon, contentDescription = null, modifier = Modifier.size(22.dp), tint = iconTint)
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, style = MaterialTheme.typography.bodyMedium,
-                 fontWeight = FontWeight.SemiBold,
+                 fontWeight = FontWeight.Bold,
                  color = MaterialTheme.colorScheme.onBackground)
             Text(subtitle, style = MaterialTheme.typography.bodySmall,
                  color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Icon(Icons.Rounded.ChevronRight, null,
-             Modifier.size(18.dp),
-             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+             Modifier.size(20.dp),
+             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
     }
 }
 
@@ -816,21 +695,21 @@ private fun DataStatRow(label: String, value: String, icon: ImageVector) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Icon(icon, contentDescription = null,
-             modifier = Modifier.size(16.dp),
+             modifier = Modifier.size(18.dp),
              tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Text(label, style = MaterialTheme.typography.bodySmall,
              color = MaterialTheme.colorScheme.onSurfaceVariant,
-             modifier = Modifier.weight(1f))
+             modifier = Modifier.weight(1f),
+             fontWeight = FontWeight.Medium)
         Text(value, style = MaterialTheme.typography.bodySmall,
-             fontWeight = FontWeight.SemiBold,
+             fontWeight = FontWeight.Bold,
              color = MaterialTheme.colorScheme.onBackground)
     }
 }
 
-// Feature 7: Theme segmented buttons — System / Light / Dark
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ThemeSegmentedButtons(
@@ -853,11 +732,11 @@ private fun ThemeSegmentedButtons(
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp)
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             ) {
-                Text(label, style = MaterialTheme.typography.labelMedium)
+                Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
             }
         }
     }
