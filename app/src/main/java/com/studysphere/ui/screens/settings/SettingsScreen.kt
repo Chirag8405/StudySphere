@@ -17,9 +17,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.studysphere.R
 import com.studysphere.ui.components.SphereCard
 import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.ImportResult
@@ -362,12 +364,15 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .background(if (LocalDarkTheme.current) PureBlack else Gray100)
+                                .border(1.dp, if (LocalDarkTheme.current) Gray800 else Gray300, RoundedCornerShape(12.dp)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.AutoStories, null,
-                                 Modifier.size(28.dp),
-                                 tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Image(
+                                painter = painterResource(id = R.mipmap.ic_launcher_foreground),
+                                contentDescription = "App Logo",
+                                modifier = Modifier.size(40.dp)
+                            )
                         }
                         Column {
                             Text(
