@@ -178,16 +178,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun addLecture(
         subjectId: Long, dayOfWeek: Int,
-        startH: Int, startM: Int, endH: Int, endM: Int, room: String
+        startH: Int, startM: Int, endH: Int, endM: Int, room: String,
+        onResult: (Boolean) -> Unit = {}
     ) {
         viewModelScope.launch {
-            repository.insertLecture(
+            val res = repository.insertLecture(
                 Lecture(
                     subjectId = subjectId, dayOfWeek = dayOfWeek,
                     startTimeHour = startH, startTimeMinute = startM,
                     endTimeHour = endH, endTimeMinute = endM, room = room
                 )
             )
+            onResult(res.isSuccess)
+        }
+    }
+
+    fun updateLecture(lecture: Lecture, onResult: (Boolean) -> Unit = {}) {
+        viewModelScope.launch {
+            val res = repository.updateLecture(lecture)
+            onResult(res.isSuccess)
         }
     }
 

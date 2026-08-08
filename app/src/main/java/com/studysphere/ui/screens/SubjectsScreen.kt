@@ -18,11 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.studysphere.data.models.*
 import com.studysphere.ui.components.*
 import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -30,6 +32,8 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     val subjects by viewModel.subjects.collectAsState()
     val lectures by viewModel.allLectures.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
+    
+    val scope = rememberCoroutineScope()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -40,11 +44,15 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     var editingSubject         by remember { mutableStateOf<Subject?>(null) }
     var deleteSubjectTarget    by remember { mutableStateOf<Subject?>(null) }
     var showAddLectureDialog   by remember { mutableStateOf(false) }
+    var editingLecture         by remember { mutableStateOf<Lecture?>(null) }
     var addLectureForSubjectId by remember { mutableStateOf<Long?>(null) }
     var deleteLectureTarget    by remember { mutableStateOf<Lecture?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick        = { showAddSubjectDialog = true },
@@ -93,6 +101,7 @@ fun SubjectsScreen(viewModel: MainViewModel) {
                                 addLectureForSubjectId = subject.id
                                 showAddLectureDialog = true
                             },
+                            onEditLecture = { editingLecture = it },
                             onDeleteLecture = { deleteLectureTarget = it }
                         )
                     }
@@ -148,20 +157,47 @@ fun SubjectsScreen(viewModel: MainViewModel) {
         )
     }
 
-    // Add Lecture Dialog
-    if (showAddLectureDialog && addLectureForSubjectId != null) {
-        val subject = subjects.find { it.id == addLectureForSubjectId }
+    // Add/Edit Lecture Dialog
+    if ((showAddLectureDialog && addLectureForSubjectId != null) || editingLecture != null) {
+        val subjectId = addLectureForSubjectId ?: editingLecture?.subjectId
+        val subject = subjects.find { it.id == subjectId }
         if (subject != null) {
-            AddLectureDialog(
+            AddEditLectureDialog(
                 subject   = subject,
+                existing  = editingLecture,
                 onDismiss = {
                     showAddLectureDialog   = false
                     addLectureForSubjectId = null
+                    editingLecture         = null
                 },
                 onSave    = { dow, sH, sM, eH, eM, room ->
-                    viewModel.addLecture(subject.id, dow, sH, sM, eH, eM, room)
+                    if (editingLecture != null) {
+                        viewModel.updateLecture(
+                            editingLecture!!.copy(
+                                dayOfWeek = dow,
+                                startTimeHour = sH, startTimeMinute = sM,
+                                endTimeHour = eH, endTimeMinute = eM,
+                                room = room
+                            )
+                        ) { success ->
+                            if (!success) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error: Time overlap with another lecture")
+                                }
+                            }
+                        }
+                    } else {
+                        viewModel.addLecture(subject.id, dow, sH, sM, eH, eM, room) { success ->
+                            if (!success) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error: Time overlap with another lecture")
+                                }
+                            }
+                        }
+                    }
                     showAddLectureDialog   = false
                     addLectureForSubjectId = null
+                    editingLecture         = null
                 }
             )
         }
@@ -188,6 +224,7 @@ private fun SubjectCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddLecture: () -> Unit,
+    onEditLecture: (Lecture) -> Unit,
     onDeleteLecture: (Lecture) -> Unit
 ) {
     val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
@@ -302,6 +339,7 @@ private fun SubjectCard(
                             LectureRow(
                                 lecture  = lecture,
                                 dayNames = dayNames,
+                                onEdit   = { onEditLecture(lecture) },
                                 onDelete = { onDeleteLecture(lecture) }
                             )
                         }
@@ -325,6 +363,7 @@ private fun SubjectCard(
 private fun LectureRow(
     lecture: Lecture,
     dayNames: List<String>,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val timeStr = "%02d:%02d – %02d:%02d".format(
@@ -339,7 +378,8 @@ private fun LectureRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onEdit)) {
             Box(
                 modifier = Modifier
                     .size(width = 36.dp, height = 22.dp)
@@ -360,7 +400,8 @@ private fun LectureRow(
                     Icon(Icons.Rounded.LocationOn, null, Modifier.size(12.dp),
                          tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(lecture.room, style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -466,18 +507,19 @@ private fun AddEditSubjectDialog(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddLectureDialog(
+private fun AddEditLectureDialog(
     subject: Subject,
+    existing: Lecture? = null,
     onDismiss: () -> Unit,
     onSave: (Int, Int, Int, Int, Int, String) -> Unit
 ) {
     val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    var selectedDay by remember { mutableStateOf(1) }
-    var startHour   by remember { mutableStateOf(9) }
-    var startMinute by remember { mutableStateOf(0) }
-    var endHour     by remember { mutableStateOf(10) }
-    var endMinute   by remember { mutableStateOf(0) }
-    var room        by remember { mutableStateOf("") }
+    var selectedDay by remember { mutableIntStateOf(existing?.dayOfWeek ?: 1) }
+    var startHour   by remember { mutableIntStateOf(existing?.startTimeHour ?: 9) }
+    var startMinute by remember { mutableIntStateOf(existing?.startTimeMinute ?: 0) }
+    var endHour     by remember { mutableIntStateOf(existing?.endTimeHour ?: 10) }
+    var endMinute   by remember { mutableIntStateOf(existing?.endTimeMinute ?: 0) }
+    var room        by remember { mutableStateOf(existing?.room ?: "") }
     var timeError   by remember { mutableStateOf(false) }
 
     val isDark = LocalDarkTheme.current
@@ -488,13 +530,14 @@ private fun AddLectureDialog(
         containerColor = if (isDark) PureBlack else Color.White,
         shape = shape,
         title = {
-            Text("Add Lecture · ${subject.name}", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(if (existing == null) "Add Lecture to ${subject.name}" else "Edit ${subject.name} Lecture", 
+                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Day selector
                 Text("Day of Week", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     itemsIndexed(dayNames) { index, dayName ->
                         val dow = index + 1
@@ -525,13 +568,14 @@ private fun AddLectureDialog(
                 if (timeError) {
                     Text("End time must be after start time",
                          style = MaterialTheme.typography.labelSmall,
-                         color = MaterialTheme.colorScheme.error)
+                         color = MaterialTheme.colorScheme.error,
+                         fontWeight = FontWeight.Bold)
                 }
                 Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Start Time", style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         TimeInput(
                             hour = startHour, minute = startMinute,
@@ -541,7 +585,7 @@ private fun AddLectureDialog(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("End Time", style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         TimeInput(
                             hour = endHour, minute = endMinute,
@@ -578,7 +622,7 @@ private fun AddLectureDialog(
                     contentColor = Color.White
                 ),
                 shape  = RoundedCornerShape(12.dp)
-            ) { Text("Add Lecture") }
+            ) { Text(if (existing == null) "Add Lecture" else "Save Changes") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {

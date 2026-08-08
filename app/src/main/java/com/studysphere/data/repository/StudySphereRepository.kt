@@ -41,8 +41,34 @@ class StudySphereRepository(
     fun getLecturesByDay(dayOfWeek: Int) = lectureDao.getLecturesByDay(dayOfWeek)
     fun getLecturesBySubject(subjectId: Long) = lectureDao.getLecturesBySubject(subjectId)
 
-    suspend fun insertLecture(lecture: Lecture) = lectureDao.insertLecture(lecture)
-    suspend fun updateLecture(lecture: Lecture) = lectureDao.updateLecture(lecture)
+    suspend fun insertLecture(lecture: Lecture): Result<Long> {
+        if (isLectureOverlapping(lecture)) return Result.failure(Exception("Overlap"))
+        return Result.success(lectureDao.insertLecture(lecture))
+    }
+
+    suspend fun updateLecture(lecture: Lecture): Result<Unit> {
+        if (isLectureOverlapping(lecture)) return Result.failure(Exception("Overlap"))
+        lectureDao.updateLecture(lecture)
+        return Result.success(Unit)
+    }
+
+    private suspend fun isLectureOverlapping(lecture: Lecture): Boolean {
+        val sameDay = lectureDao.getAllLecturesList().filter { 
+            it.dayOfWeek == lecture.dayOfWeek && it.id != lecture.id 
+        }
+        
+        val newStart = lecture.startTimeHour * 60 + lecture.startTimeMinute
+        val newEnd = lecture.endTimeHour * 60 + lecture.endTimeMinute
+        
+        return sameDay.any { existing ->
+            val exStart = existing.startTimeHour * 60 + existing.startTimeMinute
+            val exEnd = existing.endTimeHour * 60 + existing.endTimeMinute
+            
+            // Overlap if (StartA < EndB) and (EndA > StartB)
+            newStart < exEnd && newEnd > exStart
+        }
+    }
+
     suspend fun deleteLecture(lecture: Lecture) {
         attendanceDao.deleteRecordsByLecture(lecture.id)
         lectureDao.deleteLecture(lecture)
