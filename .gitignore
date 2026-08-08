@@ -30,6 +30,8 @@ out/
 *.jks
 *.keystore
 *.pem
+keystore.properties
+keystore-base64.txt
 
 # Generated Android artifacts (publish via GitHub Releases instead)
 *.apk

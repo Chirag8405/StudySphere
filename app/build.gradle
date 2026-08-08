@@ -4,6 +4,29 @@ plugins {
     id 'com.google.devtools.ksp'
 }
 
+import java.io.FileInputStream
+import java.util.Properties
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def resolveKeystorePath = {
+    keystoreProperties.getProperty('KEYSTORE_PATH') ?: System.getenv('KEYSTORE_PATH')
+}
+
+def resolveKeystoreFile = {
+    def keystorePath = resolveKeystorePath()
+    if (!keystorePath) {
+        return null
+    }
+
+    def keystoreFile = rootProject.file(keystorePath)
+    keystoreFile.exists() ? keystoreFile : null
+}
+
 android {
     namespace 'com.studysphere'
     compileSdk 34
@@ -12,8 +35,8 @@ android {
         applicationId "com.studysphere"
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName "1.2.0"
+        versionCode = (System.getenv("VERSION_CODE")?.toInteger()) ?: 1
+        versionName = System.getenv("VERSION_NAME")?.replaceFirst(/^v/, "") ?: "1.0.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -21,8 +44,23 @@ android {
         }
     }
 
+    signingConfigs {
+        release {
+            def keystoreFile = resolveKeystoreFile()
+            if (keystoreFile) {
+                storeFile = keystoreFile
+            }
+            storePassword = keystoreProperties.getProperty('KEYSTORE_PASSWORD') ?: System.getenv('KEYSTORE_PASSWORD')
+            keyAlias = keystoreProperties.getProperty('KEY_ALIAS') ?: System.getenv('KEY_ALIAS')
+            keyPassword = keystoreProperties.getProperty('KEY_PASSWORD') ?: System.getenv('KEY_PASSWORD')
+        }
+    }
+
     buildTypes {
         release {
+            if (resolveKeystoreFile()) {
+                signingConfig = signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }

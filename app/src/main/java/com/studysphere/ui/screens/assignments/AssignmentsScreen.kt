@@ -110,7 +110,7 @@ fun AssignmentsScreen(
                 icon           = { Icon(Icons.Rounded.Add, null) },
                 text           = { Text("Add Assignment") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                contentColor   = Color.White
             )
         }
     ) { innerPadding ->
@@ -334,9 +334,10 @@ private fun StatusPriorityDropdown(
 
     Column(modifier = modifier) {
         Text(
-            text = "Status / Priority",
+            text = "Filter",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(4.dp))
         Box {
@@ -359,9 +360,10 @@ private fun StatusPriorityDropdown(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
                     )
-                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = "Open status and priority filters")
+                    Icon(Icons.Rounded.ArrowDropDown, contentDescription = "Open filters")
                 }
             }
 
@@ -371,7 +373,7 @@ private fun StatusPriorityDropdown(
             ) {
                 AssignmentMetaFilter.values().forEach { option ->
                     DropdownMenuItem(
-                        text = { Text(option.label) },
+                        text = { Text(option.label, fontWeight = FontWeight.Bold) },
                         onClick = {
                             expanded = false
                             onFilterSelected(option)
@@ -402,7 +404,7 @@ private fun SubjectDropdown(
     var expanded by remember { mutableStateOf(false) }
 
     val selectedLabel = when (selectedSubjectId) {
-        null -> "All subjects"
+        null -> "All Subjects"
         else -> subjects.find { it.id == selectedSubjectId }?.name ?: "Unknown"
     }
 
@@ -410,7 +412,8 @@ private fun SubjectDropdown(
         Text(
             text = "Subject",
             style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(4.dp))
         Box {
@@ -433,7 +436,8 @@ private fun SubjectDropdown(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onBackground,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontWeight = FontWeight.Bold
                     )
                     Icon(Icons.Rounded.ArrowDropDown, contentDescription = "Open subject filters")
                 }
@@ -444,7 +448,7 @@ private fun SubjectDropdown(
                 onDismissRequest = { expanded = false }
             ) {
                 DropdownMenuItem(
-                    text = { Text("All subjects") },
+                    text = { Text("All Subjects", fontWeight = FontWeight.Bold) },
                     onClick = {
                         expanded = false
                         onSubjectSelected(null)
@@ -464,10 +468,9 @@ private fun SubjectDropdown(
                         text = {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                SubjectColorDot(subject.colorHex)
-                                Text(subject.name)
+                                Text(subject.name, fontWeight = FontWeight.Bold)
                             }
                         },
                         onClick = {
@@ -501,7 +504,7 @@ private fun AssignmentStatsRow(assignments: List<Assignment>) {
 
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         MiniStatPill("Pending", pending.toString(), Amber500, Modifier.weight(1f))
-        MiniStatPill("Completed", completed.toString(), Green500, Modifier.weight(1f))
+        MiniStatPill("Done", completed.toString(), Green500, Modifier.weight(1f))
         MiniStatPill("Overdue", overdue.toString(), Red500, Modifier.weight(1f))
     }
 }
@@ -510,14 +513,14 @@ private fun AssignmentStatsRow(assignments: List<Assignment>) {
 private fun MiniStatPill(label: String, value: String, color: Color, modifier: Modifier) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
-            .background(color.copy(0.08f))
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .clip(RoundedCornerShape(8.dp))
+            .background(color.copy(alpha = 0.1f))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Text(label, style = MaterialTheme.typography.labelSmall,
-             color = MaterialTheme.colorScheme.onSurfaceVariant)
+             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
         Text(value, style = MaterialTheme.typography.titleSmall,
              fontWeight = FontWeight.Bold, color = color)
     }
@@ -570,10 +573,10 @@ private fun AssignmentCard(
             Box(
                 modifier = Modifier
                     .padding(top = 2.dp)
-                    .size(22.dp)
+                    .size(24.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
-                        if (isCompleted) Green500.copy(0.15f)
+                        if (isCompleted) Green500
                         else MaterialTheme.colorScheme.surfaceVariant
                     )
                     .border(
@@ -592,16 +595,16 @@ private fun AssignmentCard(
                 contentAlignment = Alignment.Center
             ) {
                 if (isCompleted) {
-                    Icon(Icons.Rounded.Check, null, Modifier.size(14.dp), tint = Green500)
+                    Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = Color.White)
                 }
             }
 
             // Content
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = assignment.title,
                     style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     color = if (isCompleted || isCancelled)
                         MaterialTheme.colorScheme.onSurfaceVariant
                     else MaterialTheme.colorScheme.onBackground,
@@ -643,7 +646,7 @@ private fun AssignmentCard(
                         text = dueLabel,
                         style = MaterialTheme.typography.labelSmall,
                         color = urgencyColor,
-                        fontWeight = if (isOverdue || daysUntil <= 1L) FontWeight.SemiBold else FontWeight.Normal
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "· ${assignment.dueDate}",
@@ -661,39 +664,38 @@ private fun AssignmentCard(
                 ) {
                     Icon(Icons.Rounded.MoreVert, null,
                          Modifier.size(18.dp),
-                         tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                 }
                 DropdownMenu(
                     expanded        = menuExpanded,
                     onDismissRequest = { menuExpanded = false }
                 ) {
                     DropdownMenuItem(
-                        text     = { Text("Edit", style = MaterialTheme.typography.bodySmall) },
+                        text     = { Text("Edit", fontWeight = FontWeight.Bold) },
                         onClick  = { menuExpanded = false; onEdit() },
-                        leadingIcon = { Icon(Icons.Rounded.Edit, null, Modifier.size(16.dp)) }
+                        leadingIcon = { Icon(Icons.Rounded.Edit, null, Modifier.size(18.dp)) }
                     )
                     if (assignment.status == AssignmentStatus.PENDING) {
                         DropdownMenuItem(
-                            text = { Text("Mark Cancelled", style = MaterialTheme.typography.bodySmall) },
+                            text = { Text("Mark Cancelled", fontWeight = FontWeight.Bold) },
                             onClick = { menuExpanded = false; onStatusChange(AssignmentStatus.CANCELLED) },
-                            leadingIcon = { Icon(Icons.Rounded.Cancel, null, Modifier.size(16.dp)) }
+                            leadingIcon = { Icon(Icons.Rounded.Cancel, null, Modifier.size(18.dp)) }
                         )
                     } else {
                         DropdownMenuItem(
-                            text = { Text("Mark Pending", style = MaterialTheme.typography.bodySmall) },
+                            text = { Text("Mark Pending", fontWeight = FontWeight.Bold) },
                             onClick = { menuExpanded = false; onStatusChange(AssignmentStatus.PENDING) },
-                            leadingIcon = { Icon(Icons.Rounded.Refresh, null, Modifier.size(16.dp)) }
+                            leadingIcon = { Icon(Icons.Rounded.Refresh, null, Modifier.size(18.dp)) }
                         )
                     }
                     DropdownMenuItem(
                         text = {
-                            Text("Delete", style = MaterialTheme.typography.bodySmall,
-                                 color = MaterialTheme.colorScheme.error)
+                            Text("Delete", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
                         },
                         onClick = { menuExpanded = false; onDelete() },
                         leadingIcon = {
                             Icon(Icons.Rounded.Delete, null,
-                                 Modifier.size(16.dp),
+                                 Modifier.size(18.dp),
                                  tint = MaterialTheme.colorScheme.error)
                         }
                     )
@@ -724,19 +726,24 @@ fun AddEditAssignmentDialog(
 
     val selectedSubject = subjects.find { it.id == subjectId }
 
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(20.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
+        shape = shape,
         title = {
             Text(
                 if (existing == null) "New Assignment" else "Edit Assignment",
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(14.dp)
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // Title
                     OutlinedTextField(
@@ -763,7 +770,7 @@ fun AddEditAssignmentDialog(
 
                 // Subject dropdown
                 Text("Subject", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 Box {
                     OutlinedCard(
                         onClick = { subjectMenuExpanded = true },
@@ -777,9 +784,8 @@ fun AddEditAssignmentDialog(
                         ) {
                             if (selectedSubject != null) {
                                 Row(verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    SubjectColorDot(selectedSubject.colorHex)
-                                    Text(selectedSubject.name, style = MaterialTheme.typography.bodyMedium)
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Text(selectedSubject.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                                 }
                             } else {
                                 Text("Select subject", style = MaterialTheme.typography.bodyMedium,
@@ -796,9 +802,8 @@ fun AddEditAssignmentDialog(
                             DropdownMenuItem(
                                 text = {
                                     Row(verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        SubjectColorDot(subject.colorHex)
-                                        Text(subject.name, style = MaterialTheme.typography.bodySmall)
+                                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Text(subject.name, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Bold)
                                     }
                                 },
                                 onClick = { subjectId = subject.id; subjectMenuExpanded = false },
@@ -813,7 +818,7 @@ fun AddEditAssignmentDialog(
 
                 // Due date
                 Text("Due Date", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 OutlinedCard(
                     onClick = { showDatePicker = true },
                     modifier = Modifier
@@ -832,13 +837,17 @@ fun AddEditAssignmentDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Rounded.CalendarMonth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Column {
                                 Text(
                                     text = dueDate.toUiDateLabel(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = dueDate,
@@ -847,28 +856,25 @@ fun AddEditAssignmentDialog(
                                 )
                             }
                         }
-                        Icon(
-                            Icons.Rounded.EditCalendar,
-                            contentDescription = "Select due date"
-                        )
                     }
                 }
                 if (dateError) {
                     Text(
                         "Select a valid date",
                         style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.error
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
                     )
                 }
 
                 // Priority
                 Text("Priority", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Priority.values().forEach { p ->
                         val isSelected = priority == p
                         val pColor = when (p) {
-                            Priority.LOW    -> Teal500
+                            Priority.LOW    -> Gray500
                             Priority.MEDIUM -> Amber500
                             Priority.HIGH   -> Red500
                         }
@@ -877,13 +883,17 @@ fun AddEditAssignmentDialog(
                             onClick  = { priority = p },
                             label    = {
                                 Text(p.name.lowercase().replaceFirstChar { it.uppercase() },
-                                     style = MaterialTheme.typography.labelSmall)
+                                     style = MaterialTheme.typography.labelSmall,
+                                     fontWeight = FontWeight.Bold)
                             },
                             colors = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = pColor.copy(0.15f),
-                                selectedLabelColor     = pColor
+                                selectedContainerColor = pColor,
+                                selectedLabelColor     = Color.White,
+                                containerColor = pColor.copy(alpha = 0.1f),
+                                labelColor = pColor
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            border = null
                         )
                     }
                 }
@@ -898,11 +908,20 @@ fun AddEditAssignmentDialog(
                         onSave(subjectId, title.trim(), description.trim(), dueDate, priority)
                     }
                 },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                )
             ) { Text(if (existing == null) "Add" else "Save") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Bold)
+            }
         }
     )
 
@@ -910,8 +929,10 @@ fun AddEditAssignmentDialog(
         val initialDate = dueDate.toLocalDateOrNull() ?: LocalDate.now().plusDays(7)
         val pickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate.toEpochMillis())
 
+        val dShape = RoundedCornerShape(20.dp)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
+            modifier = Modifier.border(1.dp, if (LocalDarkTheme.current) Gray700 else Gray400, dShape),
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -921,20 +942,31 @@ fun AddEditAssignmentDialog(
                         showDatePicker = false
                     }
                 ) {
-                    Text("OK")
+                    Text("OK", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
+                TextButton(
+                    onClick = { showDatePicker = false },
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+                ) {
+                    Text("Cancel", fontWeight = FontWeight.Bold)
                 }
-            }
+            },
+            shape = dShape
         ) {
             DatePicker(
                 state = pickerState,
                 showModeToggle = false,
                 title = null,
-                headline = null
+                headline = null,
+                colors = DatePickerDefaults.colors(
+                    todayDateBorderColor = PrimaryPurple,
+                    todayContentColor = PrimaryPurple,
+                    selectedDayContainerColor = PrimaryPurple,
+                    selectedDayContentColor = Color.White,
+                    containerColor = if (LocalDarkTheme.current) PureBlack else Color.White
+                )
             )
         }
     }

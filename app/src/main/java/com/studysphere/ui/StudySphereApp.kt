@@ -8,6 +8,7 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -20,6 +21,7 @@ import com.studysphere.ui.screens.attendance.AttendanceDetailScreen
 import com.studysphere.ui.screens.attendance.AttendanceScreen
 import com.studysphere.ui.screens.dashboard.DashboardScreen
 import com.studysphere.ui.screens.settings.SettingsScreen
+import com.studysphere.ui.theme.PrimaryPurple
 import com.studysphere.viewmodel.MainViewModel
 
 data class BottomNavItem(
@@ -147,11 +149,11 @@ fun StudySphereApp(viewModel: MainViewModel) {
                                 }
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor   = MaterialTheme.colorScheme.primary,
-                                selectedTextColor   = MaterialTheme.colorScheme.primary,
-                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                                indicatorColor      = MaterialTheme.colorScheme.primaryContainer
+                                selectedIconColor   = Color.White,
+                                selectedTextColor   = MaterialTheme.colorScheme.onBackground,
+                                unselectedIconColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                unselectedTextColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                indicatorColor      = PrimaryPurple
                             )
                         )
                     }

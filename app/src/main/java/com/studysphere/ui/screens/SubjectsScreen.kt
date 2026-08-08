@@ -18,11 +18,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.studysphere.data.models.*
 import com.studysphere.ui.components.*
 import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.MainViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -30,6 +32,8 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     val subjects by viewModel.subjects.collectAsState()
     val lectures by viewModel.allLectures.collectAsState()
     val refreshing by viewModel.isRefreshing.collectAsState()
+    
+    val scope = rememberCoroutineScope()
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -40,18 +44,22 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     var editingSubject         by remember { mutableStateOf<Subject?>(null) }
     var deleteSubjectTarget    by remember { mutableStateOf<Subject?>(null) }
     var showAddLectureDialog   by remember { mutableStateOf(false) }
+    var editingLecture         by remember { mutableStateOf<Lecture?>(null) }
     var addLectureForSubjectId by remember { mutableStateOf<Long?>(null) }
     var deleteLectureTarget    by remember { mutableStateOf<Lecture?>(null) }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick        = { showAddSubjectDialog = true },
                 icon           = { Icon(Icons.Rounded.Add, null) },
                 text           = { Text("Add Subject") },
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor   = MaterialTheme.colorScheme.onPrimary
+                contentColor   = Color.White
             )
         }
     ) { innerPadding ->
@@ -93,6 +101,7 @@ fun SubjectsScreen(viewModel: MainViewModel) {
                                 addLectureForSubjectId = subject.id
                                 showAddLectureDialog = true
                             },
+                            onEditLecture = { editingLecture = it },
                             onDeleteLecture = { deleteLectureTarget = it }
                         )
                     }
@@ -113,7 +122,6 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     if (showAddSubjectDialog) {
         AddEditSubjectDialog(
             existing   = null,
-            colorSuggestion = viewModel.nextSubjectColor(subjects.size),
             onDismiss  = { showAddSubjectDialog = false },
             onSave     = { name, colorHex, minAtt ->
                 viewModel.addSubject(name, colorHex, minAtt)
@@ -126,7 +134,6 @@ fun SubjectsScreen(viewModel: MainViewModel) {
     if (editingSubject != null) {
         AddEditSubjectDialog(
             existing   = editingSubject,
-            colorSuggestion = editingSubject!!.colorHex,
             onDismiss  = { editingSubject = null },
             onSave     = { name, colorHex, minAtt ->
                 viewModel.updateSubject(
@@ -150,20 +157,47 @@ fun SubjectsScreen(viewModel: MainViewModel) {
         )
     }
 
-    // Add Lecture Dialog
-    if (showAddLectureDialog && addLectureForSubjectId != null) {
-        val subject = subjects.find { it.id == addLectureForSubjectId }
+    // Add/Edit Lecture Dialog
+    if ((showAddLectureDialog && addLectureForSubjectId != null) || editingLecture != null) {
+        val subjectId = addLectureForSubjectId ?: editingLecture?.subjectId
+        val subject = subjects.find { it.id == subjectId }
         if (subject != null) {
-            AddLectureDialog(
+            AddEditLectureDialog(
                 subject   = subject,
+                existing  = editingLecture,
                 onDismiss = {
                     showAddLectureDialog   = false
                     addLectureForSubjectId = null
+                    editingLecture         = null
                 },
                 onSave    = { dow, sH, sM, eH, eM, room ->
-                    viewModel.addLecture(subject.id, dow, sH, sM, eH, eM, room)
+                    if (editingLecture != null) {
+                        viewModel.updateLecture(
+                            editingLecture!!.copy(
+                                dayOfWeek = dow,
+                                startTimeHour = sH, startTimeMinute = sM,
+                                endTimeHour = eH, endTimeMinute = eM,
+                                room = room
+                            )
+                        ) { success ->
+                            if (!success) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error: Time overlap with another lecture")
+                                }
+                            }
+                        }
+                    } else {
+                        viewModel.addLecture(subject.id, dow, sH, sM, eH, eM, room) { success ->
+                            if (!success) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Error: Time overlap with another lecture")
+                                }
+                            }
+                        }
+                    }
                     showAddLectureDialog   = false
                     addLectureForSubjectId = null
+                    editingLecture         = null
                 }
             )
         }
@@ -190,12 +224,9 @@ private fun SubjectCard(
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     onAddLecture: () -> Unit,
+    onEditLecture: (Lecture) -> Unit,
     onDeleteLecture: (Lecture) -> Unit
 ) {
-    val subjectColor = remember(subject.colorHex) {
-        try { Color(android.graphics.Color.parseColor(subject.colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
     val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     var menuExpanded by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(true) }
@@ -210,26 +241,26 @@ private fun SubjectCard(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.weight(1f)
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(subjectColor.copy(0.15f)),
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(0.1f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = subject.name.take(1).uppercase(),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
-                            color = subjectColor
+                            color = MaterialTheme.colorScheme.onBackground
                         )
                     }
                     Column {
                         Text(subject.name, style = MaterialTheme.typography.titleSmall,
-                             fontWeight = FontWeight.SemiBold,
+                             fontWeight = FontWeight.Bold,
                              color = MaterialTheme.colorScheme.onBackground)
                         Text("Min. ${subject.minAttendancePercent.toInt()}% attendance · ${lectures.size} lecture${if (lectures.size == 1) "" else "s"}/week",
                              style = MaterialTheme.typography.bodySmall,
@@ -281,8 +312,8 @@ private fun SubjectCard(
 
             // Lectures list
             AnimatedVisibility(visible = expanded) {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    GradientDivider()
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Divider(color = MaterialTheme.colorScheme.outlineVariant)
                     if (lectures.isEmpty()) {
                         Row(
                             modifier = Modifier
@@ -308,7 +339,7 @@ private fun SubjectCard(
                             LectureRow(
                                 lecture  = lecture,
                                 dayNames = dayNames,
-                                subjectColor = subjectColor,
+                                onEdit   = { onEditLecture(lecture) },
                                 onDelete = { onDeleteLecture(lecture) }
                             )
                         }
@@ -317,9 +348,9 @@ private fun SubjectCard(
                             modifier = Modifier.align(Alignment.Start),
                             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
                         ) {
-                            Icon(Icons.Rounded.Add, null, Modifier.size(14.dp))
+                            Icon(Icons.Rounded.Add, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Spacer(Modifier.width(4.dp))
-                            Text("Add lecture", style = MaterialTheme.typography.labelSmall)
+                            Text("Add lecture", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
                 }
@@ -332,7 +363,7 @@ private fun SubjectCard(
 private fun LectureRow(
     lecture: Lecture,
     dayNames: List<String>,
-    subjectColor: Color,
+    onEdit: () -> Unit,
     onDelete: () -> Unit
 ) {
     val timeStr = "%02d:%02d – %02d:%02d".format(
@@ -347,16 +378,17 @@ private fun LectureRow(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f).clickable(onClick = onEdit)) {
             Box(
                 modifier = Modifier
                     .size(width = 36.dp, height = 22.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(subjectColor.copy(0.12f)),
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Text(dayName, style = MaterialTheme.typography.labelSmall,
-                     fontWeight = FontWeight.SemiBold, color = subjectColor)
+                     fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSecondaryContainer)
             }
             Icon(Icons.Rounded.Schedule, null, Modifier.size(13.dp),
                  tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -368,7 +400,8 @@ private fun LectureRow(
                     Icon(Icons.Rounded.LocationOn, null, Modifier.size(12.dp),
                          tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(lecture.room, style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
         }
@@ -383,21 +416,25 @@ private fun LectureRow(
 @Composable
 private fun AddEditSubjectDialog(
     existing: Subject?,
-    colorSuggestion: String,
     onDismiss: () -> Unit,
     onSave: (String, String, Float) -> Unit
 ) {
     var name       by remember { mutableStateOf(existing?.name ?: "") }
-    var colorHex   by remember { mutableStateOf(existing?.colorHex ?: colorSuggestion) }
+    // Always use PrimaryPurple for subjects now
+    val colorHex   = "#7F22FE" 
     var minAtt     by remember { mutableStateOf(existing?.minAttendancePercent ?: 75f) }
     var nameError  by remember { mutableStateOf(false) }
 
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(20.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
+        shape = shape,
         title = {
             Text(if (existing == null) "New Subject" else "Edit Subject",
-                 style = MaterialTheme.typography.headlineSmall)
+                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -412,14 +449,6 @@ private fun AddEditSubjectDialog(
                     shape         = RoundedCornerShape(12.dp)
                 )
 
-                // Color picker
-                Text("Color", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                ColorPalette(
-                    selectedColor = colorHex,
-                    onColorSelected = { colorHex = it }
-                )
-
                 // Min attendance slider
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Row(
@@ -431,8 +460,8 @@ private fun AddEditSubjectDialog(
                              color = MaterialTheme.colorScheme.onSurfaceVariant)
                         Text("${minAtt.toInt()}%",
                              style = MaterialTheme.typography.labelMedium,
-                             fontWeight = FontWeight.SemiBold,
-                             color = MaterialTheme.colorScheme.primary)
+                             fontWeight = FontWeight.Bold,
+                             color = MaterialTheme.colorScheme.onBackground)
                     }
                     Slider(
                         value        = minAtt,
@@ -440,8 +469,9 @@ private fun AddEditSubjectDialog(
                         valueRange   = 50f..100f,
                         steps        = 9,
                         colors       = SliderDefaults.colors(
-                            thumbColor       = MaterialTheme.colorScheme.primary,
-                            activeTrackColor = MaterialTheme.colorScheme.primary
+                            thumbColor       = MaterialTheme.colorScheme.onBackground,
+                            activeTrackColor = MaterialTheme.colorScheme.onBackground,
+                            inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
                         )
                     )
                     Row(modifier = Modifier.fillMaxWidth(),
@@ -460,82 +490,54 @@ private fun AddEditSubjectDialog(
                     nameError = name.isBlank()
                     if (!nameError) onSave(name.trim(), colorHex, minAtt)
                 },
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                )
             ) { Text(if (existing == null) "Add" else "Save") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            }
         }
     )
 }
 
-@Composable
-private fun ColorPalette(selectedColor: String, onColorSelected: (String) -> Unit) {
-    val colors = SubjectColors
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(colors) { hex ->
-            val color = remember(hex) {
-                try { Color(android.graphics.Color.parseColor(hex)) }
-                catch (e: Exception) { Indigo500 }
-            }
-            val isSelected = selectedColor.equals(hex, ignoreCase = true)
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(color)
-                    .border(
-                        width  = if (isSelected) 2.5.dp else 0.dp,
-                        color  = MaterialTheme.colorScheme.onBackground,
-                        shape  = CircleShape
-                    )
-                    .clickable { onColorSelected(hex) },
-                contentAlignment = Alignment.Center
-            ) {
-                if (isSelected) {
-                    Icon(Icons.Rounded.Check, null, Modifier.size(16.dp), tint = Color.White)
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AddLectureDialog(
+private fun AddEditLectureDialog(
     subject: Subject,
+    existing: Lecture? = null,
     onDismiss: () -> Unit,
     onSave: (Int, Int, Int, Int, Int, String) -> Unit
 ) {
     val dayNames = listOf("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
-    var selectedDay by remember { mutableStateOf(1) }
-    var startHour   by remember { mutableStateOf(9) }
-    var startMinute by remember { mutableStateOf(0) }
-    var endHour     by remember { mutableStateOf(10) }
-    var endMinute   by remember { mutableStateOf(0) }
-    var room        by remember { mutableStateOf("") }
+    var selectedDay by remember { mutableIntStateOf(existing?.dayOfWeek ?: 1) }
+    var startHour   by remember { mutableIntStateOf(existing?.startTimeHour ?: 9) }
+    var startMinute by remember { mutableIntStateOf(existing?.startTimeMinute ?: 0) }
+    var endHour     by remember { mutableIntStateOf(existing?.endTimeHour ?: 10) }
+    var endMinute   by remember { mutableIntStateOf(existing?.endTimeMinute ?: 0) }
+    var room        by remember { mutableStateOf(existing?.room ?: "") }
     var timeError   by remember { mutableStateOf(false) }
 
-    val subjectColor = remember(subject.colorHex) {
-        try { Color(android.graphics.Color.parseColor(subject.colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
-
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(20.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
+        shape = shape,
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SubjectColorDot(subject.colorHex, size = 10.dp)
-                Text("Add Lecture · ${subject.name}", style = MaterialTheme.typography.headlineSmall)
-            }
+            Text(if (existing == null) "Add Lecture to ${subject.name}" else "Edit ${subject.name} Lecture", 
+                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                 // Day selector
                 Text("Day of Week", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     itemsIndexed(dayNames) { index, dayName ->
                         val dow = index + 1
@@ -545,7 +547,7 @@ private fun AddLectureDialog(
                                 .size(width = 44.dp, height = 36.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(
-                                    if (isSelected) subjectColor
+                                    if (isSelected) MaterialTheme.colorScheme.onBackground
                                     else MaterialTheme.colorScheme.surfaceVariant
                                 )
                                 .clickable { selectedDay = dow },
@@ -555,7 +557,7 @@ private fun AddLectureDialog(
                                 dayName.take(3),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                color = if (isSelected) Color.White
+                                color = if (isSelected) MaterialTheme.colorScheme.background
                                         else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -566,13 +568,14 @@ private fun AddLectureDialog(
                 if (timeError) {
                     Text("End time must be after start time",
                          style = MaterialTheme.typography.labelSmall,
-                         color = MaterialTheme.colorScheme.error)
+                         color = MaterialTheme.colorScheme.error,
+                         fontWeight = FontWeight.Bold)
                 }
                 Row(modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Start Time", style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         TimeInput(
                             hour = startHour, minute = startMinute,
@@ -582,7 +585,7 @@ private fun AddLectureDialog(
                     }
                     Column(modifier = Modifier.weight(1f)) {
                         Text("End Time", style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(6.dp))
                         TimeInput(
                             hour = endHour, minute = endMinute,
@@ -614,12 +617,17 @@ private fun AddLectureDialog(
                         onSave(selectedDay, startHour, startMinute, endHour, endMinute, room.trim())
                     }
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = subjectColor),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ),
                 shape  = RoundedCornerShape(12.dp)
-            ) { Text("Add Lecture") }
+            ) { Text(if (existing == null) "Add Lecture" else "Save Changes") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            }
         }
     )
 }
@@ -687,7 +695,7 @@ private fun NumberStepper(
         ) {
             Text("%02d".format(value),
                  style = MaterialTheme.typography.titleSmall,
-                 fontWeight = FontWeight.SemiBold,
+                 fontWeight = FontWeight.Bold,
                  color = MaterialTheme.colorScheme.onBackground)
         }
         IconButton(

@@ -1,7 +1,6 @@
 package com.studysphere.ui.theme
 
 import android.app.Activity
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -10,88 +9,90 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// ─── Light Color Scheme ───────────────────────────────────────────────────────
+// ─── Light Color Scheme (Pure White) ──────────────────────────────────────────
 
 private val LightColorScheme = lightColorScheme(
-    primary            = Indigo600,
-    onPrimary          = Color.White,
-    primaryContainer   = Indigo100,
-    onPrimaryContainer = Indigo900,
+    primary            = PrimaryPurple,
+    onPrimary          = PureWhite,
+    primaryContainer   = Gray100,
+    onPrimaryContainer = Gray900,
 
-    secondary          = Violet500,
-    onSecondary        = Color.White,
-    secondaryContainer = Color(0xFFF3E8FF),
-    onSecondaryContainer = Color(0xFF3B0764),
+    secondary          = Gray800,
+    onSecondary        = PureWhite,
+    secondaryContainer = Gray100,
+    onSecondaryContainer = Gray900,
 
-    tertiary           = Teal500,
-    onTertiary         = Color.White,
-    tertiaryContainer  = Color(0xFFCCFBF1),
-    onTertiaryContainer = Color(0xFF134E4A),
+    tertiary           = Gray600,
+    onTertiary         = PureWhite,
+    tertiaryContainer  = Gray50,
+    onTertiaryContainer = Gray900,
 
-    error              = Red500,
-    onError            = Color.White,
-    errorContainer     = Red100,
+    error              = Red600,
+    onError            = PureWhite,
+    errorContainer     = Color(0xFFFEE2E2),
     onErrorContainer   = Red600,
 
-    background         = Slate50,
-    onBackground       = Slate900,
+    background         = PureWhite,
+    onBackground       = PureBlack,
 
-    surface            = Color.White,
-    onSurface          = Slate900,
-    surfaceVariant     = Slate100,
-    onSurfaceVariant   = Slate600,
+    surface            = PureWhite,
+    onSurface          = PureBlack,
+    surfaceVariant     = Gray50,
+    onSurfaceVariant   = Gray500,
 
-    outline            = Slate200,
-    outlineVariant     = Slate100,
+    outline            = Gray200,
+    outlineVariant     = Gray100,
 
-    inverseSurface     = Slate800,
-    inverseOnSurface   = Slate50,
-    inversePrimary     = Indigo400,
+    inverseSurface     = Gray900,
+    inverseOnSurface   = Gray50,
+    inversePrimary     = PrimaryPurple,
 
-    scrim              = Color.Black.copy(alpha = 0.4f),
-    surfaceTint        = Indigo600
+    scrim              = PureBlack.copy(alpha = 0.4f),
+    surfaceTint        = Color.Transparent,
+    surfaceDim         = Gray100
 )
 
-// ─── Dark Color Scheme ────────────────────────────────────────────────────────
+// ─── Dark Color Scheme (Pure Black) ───────────────────────────────────────────
 
 private val DarkColorScheme = darkColorScheme(
-    primary            = Indigo400,
-    onPrimary          = Indigo900,
-    primaryContainer   = Indigo700,
-    onPrimaryContainer = Indigo200,
+    primary            = PrimaryPurple,
+    onPrimary          = PureWhite,
+    primaryContainer   = Gray800,
+    onPrimaryContainer = PureWhite,
 
-    secondary          = Color(0xFFC4B5FD),
-    onSecondary        = Color(0xFF2E1065),
-    secondaryContainer = Violet600,
-    onSecondaryContainer = Color(0xFFEDE9FE),
+    secondary          = Gray200,
+    onSecondary        = PureBlack,
+    secondaryContainer = Gray800,
+    onSecondaryContainer = PureWhite,
 
-    tertiary           = Color(0xFF5EEAD4),
-    onTertiary         = Color(0xFF134E4A),
-    tertiaryContainer  = Color(0xFF0F766E),
-    onTertiaryContainer = Color(0xFFCCFBF1),
+    tertiary           = Gray400,
+    onTertiary         = PureBlack,
+    tertiaryContainer  = PureBlack,
+    onTertiaryContainer = PureWhite,
 
-    error              = Red400,
-    onError            = Color(0xFF7F1D1D),
-    errorContainer     = Color(0xFF991B1B),
-    onErrorContainer   = Red100,
+    error              = Red500,
+    onError            = PureWhite,
+    errorContainer     = Color(0xFF450A0A),
+    onErrorContainer   = Red500,
 
-    background         = DarkBg,
-    onBackground       = Color(0xFFE8EDF5),
+    background         = PureBlack,
+    onBackground       = PureWhite,
 
-    surface            = DarkSurface,
-    onSurface          = Color(0xFFE8EDF5),
+    surface            = PureBlack, // Pitch black
+    onSurface          = PureWhite,
     surfaceVariant     = DarkCard,
     onSurfaceVariant   = DarkMuted,
 
     outline            = DarkBorder,
-    outlineVariant     = Color(0xFF1E2845),
+    outlineVariant     = Gray800,
 
-    inverseSurface     = Slate100,
-    inverseOnSurface   = Slate900,
-    inversePrimary     = Indigo600,
+    inverseSurface     = PureWhite,
+    inverseOnSurface   = PureBlack,
+    inversePrimary     = PrimaryPurple,
 
-    scrim              = Color.Black.copy(alpha = 0.6f),
-    surfaceTint        = Indigo400
+    scrim              = PureBlack.copy(alpha = 0.6f),
+    surfaceTint        = Color.Transparent,
+    surfaceDim         = DarkSurface
 )
 
 // ─── Theme Composition Local ──────────────────────────────────────────────────
@@ -112,7 +113,9 @@ fun StudySphereTheme(
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
+            window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = !darkTheme
         }
     }
 

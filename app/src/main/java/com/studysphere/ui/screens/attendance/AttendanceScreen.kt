@@ -109,7 +109,7 @@ private fun AttendanceOverviewCard(summaries: List<SubjectAttendanceSummary>) {
             ) {
                 Column {
                     Text("Overview", style = MaterialTheme.typography.titleMedium,
-                         fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                         fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
                     Text("${summaries.size} subjects tracked",
                          style = MaterialTheme.typography.bodySmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -143,15 +143,15 @@ private fun AttendanceOverviewCard(summaries: List<SubjectAttendanceSummary>) {
 private fun RiskCountChip(label: String, count: Int, color: Color, modifier: Modifier = Modifier) {
     Column(
         modifier = modifier
-            .clip(RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(color.copy(alpha = 0.1f))
-            .padding(vertical = 8.dp),
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Text(count.toString(), style = MaterialTheme.typography.titleMedium,
              fontWeight = FontWeight.Bold, color = color)
-        Text(label, style = MaterialTheme.typography.labelSmall, color = color)
+        Text(label, style = MaterialTheme.typography.labelSmall, color = color, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -161,7 +161,7 @@ private fun AttendanceSummaryCard(
     onClick: () -> Unit
 ) {
     SphereCard(modifier = Modifier.fillMaxWidth(), onClick = onClick) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             // Header row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -169,19 +169,18 @@ private fun AttendanceSummaryCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SubjectColorDot(summary.subject.colorHex, size = 10.dp)
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(summary.subject.name,
                          style = MaterialTheme.typography.titleSmall,
-                         fontWeight = FontWeight.SemiBold,
+                         fontWeight = FontWeight.Bold,
                          color = MaterialTheme.colorScheme.onBackground)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     RiskIndicator(summary.riskLevel)
                     Icon(Icons.Rounded.ChevronRight, null,
-                         Modifier.size(16.dp),
-                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f))
+                         Modifier.size(18.dp),
+                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
                 }
             }
 
@@ -189,7 +188,8 @@ private fun AttendanceSummaryCard(
             AttendanceProgressBar(
                 percentage   = summary.percentage,
                 minThreshold = summary.subject.minAttendancePercent,
-                colorHex     = summary.subject.colorHex
+                colorHex     = "",
+                totalClasses = summary.totalClasses
             )
 
             // Stats row
@@ -213,22 +213,22 @@ private fun AttendanceSummaryCard(
             when {
                 summary.totalClasses == 0 -> {
                     insightColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    insightText = "No classes recorded yet — mark attendance to see insights"
+                    insightText = "No classes recorded yet"
                     insightIcon = Icons.Rounded.Info
                 }
                 summary.riskLevel == RiskLevel.SAFE && summary.canSkip > 0 -> {
-                    insightColor = Green600
-                    insightText = "You can safely skip up to ${summary.canSkip} more class${if (summary.canSkip == 1) "" else "es"}"
+                    insightColor = Green500
+                    insightText = "You can safely skip up to ${summary.canSkip} more"
                     insightIcon = Icons.Rounded.CheckCircle
                 }
                 summary.mustAttend > 0 -> {
                     insightColor = Red500
-                    insightText = "Attend ${summary.mustAttend} consecutive class${if (summary.mustAttend == 1) "" else "es"} to reach ${summary.subject.minAttendancePercent.toInt()}%"
+                    insightText = "Attend ${summary.mustAttend} more to reach ${summary.subject.minAttendancePercent.toInt()}%"
                     insightIcon = Icons.Rounded.Warning
                 }
                 else -> {
                     insightColor = Amber500
-                    insightText = "Borderline — don't miss any more classes"
+                    insightText = "Borderline — don't miss more classes"
                     insightIcon = Icons.Rounded.TrendingDown
                 }
             }
@@ -237,14 +237,14 @@ private fun AttendanceSummaryCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(8.dp))
-                    .background(insightColor.copy(alpha = 0.08f))
-                    .padding(horizontal = 10.dp, vertical = 7.dp),
+                    .background(insightColor.copy(alpha = 0.1f))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(7.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(insightIcon, null, Modifier.size(14.dp), tint = insightColor)
                 Text(insightText, style = MaterialTheme.typography.labelSmall,
-                     color = insightColor)
+                     color = insightColor, fontWeight = FontWeight.Bold)
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.studysphere.data.models.*
@@ -25,9 +26,8 @@ import com.studysphere.ui.components.*
 import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.MainViewModel
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -42,7 +42,6 @@ fun DashboardScreen(
     val todayLectures      by viewModel.todayLectures.collectAsState()
     val upcomingAssign     by viewModel.upcomingAssignments.collectAsState()
     val summaries          by viewModel.attendanceSummariesRefreshed.collectAsState()
-    val isDark             = LocalDarkTheme.current
     val refreshing         by viewModel.isRefreshing.collectAsState()
     val deadlineWindowDays by viewModel.deadlineWindowDays.collectAsState()
 
@@ -66,7 +65,7 @@ fun DashboardScreen(
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
-                DashboardHeader(dateStr = dateStr, isDark = isDark)
+                DashboardHeader(dateStr = dateStr)
             }
 
             item {
@@ -165,7 +164,8 @@ fun DashboardScreen(
                             ) {
                                 Text("+${summaries.size - 4} more subjects",
                                      style = MaterialTheme.typography.labelMedium,
-                                     color = MaterialTheme.colorScheme.primary)
+                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                     fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -213,7 +213,8 @@ fun DashboardScreen(
                         ) {
                             Text("+${upcomingAssign.size - 4} more assignments",
                                  style = MaterialTheme.typography.labelMedium,
-                                 color = MaterialTheme.colorScheme.primary)
+                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                 fontWeight = FontWeight.Bold)
                         }
                     }
                 }
@@ -231,57 +232,36 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun DashboardHeader(dateStr: String, isDark: Boolean) {
+private fun DashboardHeader(dateStr: String) {
+    val hour = LocalTime.now().hour
+    val greeting = when (hour) {
+        in 5..8 -> "Up Early?"
+        in 9..11 -> "Good Morning"
+        in 12..16 -> "Good Afternoon"
+        in 17..20 -> "Good Evening"
+        in 21..23 -> "Still Up?"
+        else -> "Up Late?"
+    }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                if (isDark)
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        listOf(DarkSurface, DarkBg)
-                    )
-                else
-                    androidx.compose.ui.graphics.Brush.verticalGradient(
-                        listOf(Indigo50, MaterialTheme.colorScheme.background)
-                    )
-            )
+            .background(MaterialTheme.colorScheme.background)
             .padding(horizontal = 16.dp, vertical = 20.dp)
     ) {
         Column {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column {
-                    Text(
-                        text = "StudySphere",
-                        style = MaterialTheme.typography.displaySmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary,
-                        letterSpacing = (-0.5).sp
-                    )
-                    Text(
-                        text = dateStr,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.AutoStories,
-                        contentDescription = "App Icon",
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(26.dp)
-                    )
-                }
-            }
+            Text(
+                text = greeting,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                letterSpacing = (-0.5).sp
+            )
+            Text(
+                text = dateStr,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -304,12 +284,12 @@ private fun StatsRow(
             label  = "Subjects",
             value  = subjects.size.toString(),
             icon   = Icons.Rounded.LibraryBooks,
-            color  = Indigo500,
+            color  = MaterialTheme.colorScheme.onBackground,
             modifier = Modifier.weight(1f)
         )
         StatCard(
             label  = "Avg Attend.",
-            value  = if (summaries.isEmpty()) "—" else "${avgPct.toInt()}%",
+            value  = if (summaries.isEmpty() || summaries.all { it.totalClasses == 0 }) "—" else "${avgPct.toInt()}%",
             icon   = Icons.Rounded.Percent,
             color  = if (avgPct >= 75) Green500 else Red500,
             modifier = Modifier.weight(1f)
@@ -340,7 +320,9 @@ private fun StatCard(
 ) {
     SphereCard(modifier = modifier) {
         Column(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
@@ -348,17 +330,26 @@ private fun StatCard(
                 modifier = Modifier
                     .size(32.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(color.copy(alpha = 0.12f)),
+                    .background(color.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(icon, contentDescription = null,
                      modifier = Modifier.size(17.dp), tint = color)
             }
-            Text(value, style = MaterialTheme.typography.titleMedium,
-                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
-            Text(label, style = MaterialTheme.typography.labelSmall,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                 maxLines = 1)
+            Text(
+                text = value,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                textAlign = TextAlign.Center
+            )
         }
     }
 }
@@ -369,10 +360,6 @@ private fun TodayLectureCard(
     onMark: (AttendanceStatus) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val subjectColor = remember(todayLecture.subject.colorHex) {
-        try { Color(android.graphics.Color.parseColor(todayLecture.subject.colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
     val startH = todayLecture.lecture.startTimeHour
     val startM = todayLecture.lecture.startTimeMinute
     val endH   = todayLecture.lecture.endTimeHour
@@ -385,17 +372,10 @@ private fun TodayLectureCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(52.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(subjectColor)
-            )
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Column(modifier = Modifier.weight(1f).padding(start = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(todayLecture.subject.name,
                      style = MaterialTheme.typography.titleSmall,
-                     fontWeight = FontWeight.SemiBold,
+                     fontWeight = FontWeight.Bold,
                      color = MaterialTheme.colorScheme.onBackground)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -446,7 +426,7 @@ private fun QuickMarkButton(label: String, color: Color, onClick: () -> Unit) {
         modifier = Modifier
             .size(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(color.copy(alpha = 0.12f))
+            .background(color.copy(alpha = 0.1f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -466,7 +446,6 @@ private fun AttendanceHealthCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            SubjectColorDot(summary.subject.colorHex, size = 10.dp)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -475,11 +454,11 @@ private fun AttendanceHealthCard(
                 ) {
                     Text(summary.subject.name,
                          style = MaterialTheme.typography.titleSmall,
-                         fontWeight = FontWeight.SemiBold,
+                         fontWeight = FontWeight.Bold,
                          color = MaterialTheme.colorScheme.onBackground)
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        Text("${summary.percentage.toInt()}%",
+                        Text(if (summary.totalClasses == 0) "—" else "${summary.percentage.toInt()}%",
                              style = MaterialTheme.typography.titleSmall,
                              fontWeight = FontWeight.Bold,
                              color = MaterialTheme.colorScheme.onBackground)
@@ -489,7 +468,8 @@ private fun AttendanceHealthCard(
                 AttendanceProgressBar(
                     percentage   = summary.percentage,
                     minThreshold = summary.subject.minAttendancePercent,
-                    colorHex     = summary.subject.colorHex
+                    colorHex     = "",
+                    totalClasses = summary.totalClasses
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("${summary.attended}/${summary.totalClasses} attended",
@@ -498,17 +478,19 @@ private fun AttendanceHealthCard(
                     if (summary.canSkip > 0) {
                         Text("Can skip ${summary.canSkip} more",
                              style = MaterialTheme.typography.labelSmall,
-                             color = Green600)
+                             color = Green500,
+                             fontWeight = FontWeight.Bold)
                     } else if (summary.mustAttend > 0) {
                         Text("Attend ${summary.mustAttend} to recover",
                              style = MaterialTheme.typography.labelSmall,
-                             color = Red500)
+                             color = Red500,
+                             fontWeight = FontWeight.Bold)
                     }
                 }
             }
             Icon(Icons.Rounded.ChevronRight, null,
                  Modifier.size(18.dp),
-                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                 tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f))
         }
     }
 }
@@ -540,24 +522,24 @@ private fun DashboardAssignmentCard(
             Box(
                 modifier = Modifier
                     .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(urgencyColor.copy(alpha = 0.12f)),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(urgencyColor.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Rounded.Assignment, null,
                      Modifier.size(18.dp), tint = urgencyColor)
             }
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(ua.assignment.title,
                      style = MaterialTheme.typography.titleSmall,
-                     fontWeight = FontWeight.SemiBold,
+                     fontWeight = FontWeight.Bold,
                      color = MaterialTheme.colorScheme.onBackground,
                      maxLines = 1)
                 SubjectChip(ua.subject)
             }
             Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(dueLabel, style = MaterialTheme.typography.labelSmall,
-                     color = urgencyColor, fontWeight = FontWeight.SemiBold)
+                     color = urgencyColor, fontWeight = FontWeight.Bold)
                 PriorityBadge(ua.assignment.priority)
             }
         }

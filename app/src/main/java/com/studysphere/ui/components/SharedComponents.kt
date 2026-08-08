@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.*
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -27,14 +26,13 @@ import com.studysphere.ui.theme.*
 fun SphereCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = RoundedCornerShape(12.dp),
     elevation: Dp = 0.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val isDark = LocalDarkTheme.current
-    val containerColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant
-                         else MaterialTheme.colorScheme.surface
-    val borderColor = MaterialTheme.colorScheme.outline.copy(alpha = if (isDark) 0.6f else 0.8f)
+    // Pure monochrome background - no purple tint
+    val containerColor = if (isDark) DarkSurface else Color.White
 
     if (onClick != null) {
         Card(
@@ -42,7 +40,6 @@ fun SphereCard(
             modifier = modifier,
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            border = BorderStroke(1.dp, borderColor),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation)
         ) {
             Column(content = content)
@@ -52,7 +49,6 @@ fun SphereCard(
             modifier = modifier,
             shape = shape,
             colors = CardDefaults.cardColors(containerColor = containerColor),
-            border = BorderStroke(1.dp, borderColor),
             elevation = CardDefaults.cardElevation(defaultElevation = elevation)
         ) {
             Column(content = content)
@@ -64,40 +60,27 @@ fun SphereCard(
 
 @Composable
 fun SubjectColorDot(colorHex: String, size: Dp = 10.dp) {
-    val color = remember(colorHex) {
-        try { Color(android.graphics.Color.parseColor(colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(color)
-    )
+    // Hidden in monochrome theme as per request to remove dots
 }
 
 // ─── SubjectChip ──────────────────────────────────────────────────────────────
 
 @Composable
 fun SubjectChip(subject: Subject, modifier: Modifier = Modifier) {
-    val color = remember(subject.colorHex) {
-        try { Color(android.graphics.Color.parseColor(subject.colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(100.dp))
-            .background(color.copy(alpha = 0.12f))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .clip(RoundedCornerShape(6.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp)
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        SubjectColorDot(subject.colorHex, size = 7.dp)
+        // Dot removed as per request
         Text(
             text = subject.name,
             style = MaterialTheme.typography.labelSmall,
-            color = color,
-            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Bold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -109,22 +92,22 @@ fun SubjectChip(subject: Subject, modifier: Modifier = Modifier) {
 @Composable
 fun AttendanceStatusChip(status: AttendanceStatus?) {
     val (label, bgColor, fgColor, icon) = when (status) {
-        AttendanceStatus.PRESENT   -> Quad("Present", Green500.copy(0.15f), Green600, Icons.Rounded.CheckCircle)
-        AttendanceStatus.ABSENT    -> Quad("Absent", Red500.copy(0.12f), Red500, Icons.Rounded.Cancel)
-        AttendanceStatus.CANCELLED -> Quad("Cancelled", Amber500.copy(0.15f), Amber500, Icons.Rounded.RemoveCircle)
-        null                       -> Quad("Not Marked", Slate500.copy(0.1f), Slate500, Icons.Rounded.RadioButtonUnchecked)
+        AttendanceStatus.PRESENT   -> Quad("Present", Green500.copy(0.1f), Green500, Icons.Rounded.CheckCircle)
+        AttendanceStatus.ABSENT    -> Quad("Absent", Red500.copy(0.1f), Red500, Icons.Rounded.Cancel)
+        AttendanceStatus.CANCELLED -> Quad("Cancelled", Amber500.copy(0.1f), Amber500, Icons.Rounded.RemoveCircle)
+        null                       -> Quad("Not Marked", MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.onSurfaceVariant, Icons.Rounded.RadioButtonUnchecked)
     }
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(100.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
-            .padding(horizontal = 10.dp, vertical = 4.dp),
+            .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(13.dp), tint = fgColor)
-        Text(text = label, style = MaterialTheme.typography.labelSmall, color = fgColor, fontWeight = FontWeight.SemiBold)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(12.dp), tint = fgColor)
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = fgColor, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -135,18 +118,18 @@ private data class Quad<A, B, C, D>(val first: A, val second: B, val third: C, v
 @Composable
 fun PriorityBadge(priority: Priority) {
     val (label, color) = when (priority) {
-        Priority.LOW    -> "Low" to Teal500
+        Priority.LOW    -> "Low" to Gray500
         Priority.MEDIUM -> "Medium" to Amber500
         Priority.HIGH   -> "High" to Red500
     }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(color.copy(alpha = 0.12f))
-            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(text = label.uppercase(), style = MaterialTheme.typography.labelSmall,
-             color = color, fontWeight = FontWeight.Bold, letterSpacing = 0.6.sp)
+             color = color, fontWeight = FontWeight.Bold, letterSpacing = 0.4.sp)
     }
 }
 
@@ -156,49 +139,33 @@ fun PriorityBadge(priority: Priority) {
 fun AttendanceProgressBar(
     percentage: Float,
     minThreshold: Float,
-    colorHex: String,
-    modifier: Modifier = Modifier
+    colorHex: String, 
+    modifier: Modifier = Modifier,
+    totalClasses: Int = 1 // Added to handle 0/0 case
 ) {
-    val color = remember(colorHex) {
-        try { Color(android.graphics.Color.parseColor(colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
     val progress = (percentage / 100f).coerceIn(0f, 1f)
+    val color = when {
+        totalClasses == 0 -> MaterialTheme.colorScheme.outlineVariant
+        percentage >= minThreshold -> Green500
+        else -> Red500
+    }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(100.dp))
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(MaterialTheme.colorScheme.outlineVariant)
         ) {
             // Progress fill
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(progress)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(
-                        Brush.horizontalGradient(
-                            colors = listOf(color.copy(alpha = 0.7f), color)
-                        )
-                    )
+                    .fillMaxWidth(if (totalClasses == 0) 0f else progress)
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color)
             )
-            // Threshold marker
-            val markerPos = (minThreshold / 100f).coerceIn(0.02f, 0.98f)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(markerPos)
-                    .wrapContentWidth(Alignment.End)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .width(2.dp)
-                        .height(6.dp)
-                        .background(MaterialTheme.colorScheme.onBackground.copy(alpha = 0.4f))
-                )
-            }
         }
     }
 }
@@ -220,7 +187,7 @@ fun SectionHeader(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onBackground
         )
         if (action != null && onAction != null) {
@@ -228,7 +195,8 @@ fun SectionHeader(
                 Text(
                     text = action,
                     style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.onBackground,
+                    fontWeight = FontWeight.Bold
                 )
             }
         }
@@ -251,28 +219,27 @@ fun EmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(36.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(48.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+        )
         Spacer(Modifier.height(4.dp))
-        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold,
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold,
              color = MaterialTheme.colorScheme.onBackground)
         Text(subtitle, style = MaterialTheme.typography.bodySmall,
              color = MaterialTheme.colorScheme.onSurfaceVariant)
         if (actionLabel != null && onAction != null) {
             Spacer(Modifier.height(4.dp))
-            Button(onClick = onAction, shape = RoundedCornerShape(12.dp)) {
+            Button(
+                onClick = onAction,
+                shape = RoundedCornerShape(8.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryPurple,
+                    contentColor = Color.White
+                )
+            ) {
                 Text(actionLabel)
             }
         }
@@ -284,17 +251,18 @@ fun EmptyState(
 @Composable
 fun RiskIndicator(riskLevel: RiskLevel, compact: Boolean = false) {
     val (label, bgColor, fgColor, icon) = when (riskLevel) {
-        RiskLevel.SAFE     -> Quad("Safe", Green500.copy(0.12f), Green600, Icons.Rounded.Shield)
-        RiskLevel.WARNING  -> Quad("Warning", Amber500.copy(0.12f), Amber500, Icons.Rounded.Warning)
-        RiskLevel.DANGER   -> Quad("Danger", Red500.copy(0.12f), Red500, Icons.Rounded.Error)
-        RiskLevel.CRITICAL -> Quad("Critical", Red600.copy(0.18f), Red600, Icons.Rounded.GppBad)
+        RiskLevel.SAFE     -> Quad("Safe", Green500.copy(0.1f), Green500, Icons.Rounded.Shield)
+        RiskLevel.WARNING  -> Quad("Warning", Amber500.copy(0.1f), Amber500, Icons.Rounded.Warning)
+        RiskLevel.DANGER   -> Quad("Danger", Red500.copy(0.1f), Red500, Icons.Rounded.Error)
+        RiskLevel.CRITICAL -> Quad("Critical", Red600.copy(0.1f), Red600, Icons.Rounded.GppBad)
+        RiskLevel.NEUTRAL  -> Quad("No Data", Gray500.copy(0.1f), Gray500, Icons.Rounded.HorizontalRule)
     }
 
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(100.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(bgColor)
-            .padding(horizontal = if (compact) 8.dp else 10.dp, vertical = if (compact) 3.dp else 5.dp),
+            .padding(horizontal = if (compact) 6.dp else 8.dp, vertical = if (compact) 2.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -302,7 +270,7 @@ fun RiskIndicator(riskLevel: RiskLevel, compact: Boolean = false) {
              modifier = Modifier.size(if (compact) 12.dp else 14.dp), tint = fgColor)
         if (!compact) {
             Text(text = label, style = MaterialTheme.typography.labelSmall,
-                 color = fgColor, fontWeight = FontWeight.SemiBold)
+                 color = fgColor, fontWeight = FontWeight.Bold)
         }
     }
 }
@@ -316,13 +284,13 @@ fun ConfirmDeleteDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(12.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
-        icon = {
-            Icon(Icons.Rounded.DeleteForever, contentDescription = null,
-                 tint = MaterialTheme.colorScheme.error)
-        },
-        title = { Text(title, style = MaterialTheme.typography.headlineSmall) },
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
+        title = { Text(title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold) },
         text = {
             Text(message, style = MaterialTheme.typography.bodyMedium,
                  color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -332,15 +300,17 @@ fun ConfirmDeleteDialog(
                 onClick = onConfirm,
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
+                    contentColor = Color.White
                 ),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(8.dp)
             ) { Text("Delete") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+            }
         },
-        shape = RoundedCornerShape(20.dp)
+        shape = shape
     )
 }
 
@@ -351,8 +321,8 @@ fun LoadingSpinner(modifier: Modifier = Modifier) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         CircularProgressIndicator(
             modifier = Modifier.size(32.dp),
-            strokeWidth = 2.5.dp,
-            color = MaterialTheme.colorScheme.primary
+            strokeWidth = 3.dp,
+            color = MaterialTheme.colorScheme.onBackground
         )
     }
 }
@@ -361,9 +331,8 @@ fun LoadingSpinner(modifier: Modifier = Modifier) {
 
 @Composable
 fun GradientDivider() {
-    val isDark = LocalDarkTheme.current
     Divider(
-        color = MaterialTheme.colorScheme.outline.copy(alpha = if (isDark) 0.3f else 0.4f),
-        thickness = 0.5.dp
+        color = MaterialTheme.colorScheme.outlineVariant,
+        thickness = 1.dp
     )
 }

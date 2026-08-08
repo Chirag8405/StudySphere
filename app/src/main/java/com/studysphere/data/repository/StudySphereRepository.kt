@@ -41,8 +41,34 @@ class StudySphereRepository(
     fun getLecturesByDay(dayOfWeek: Int) = lectureDao.getLecturesByDay(dayOfWeek)
     fun getLecturesBySubject(subjectId: Long) = lectureDao.getLecturesBySubject(subjectId)
 
-    suspend fun insertLecture(lecture: Lecture) = lectureDao.insertLecture(lecture)
-    suspend fun updateLecture(lecture: Lecture) = lectureDao.updateLecture(lecture)
+    suspend fun insertLecture(lecture: Lecture): Result<Long> {
+        if (isLectureOverlapping(lecture)) return Result.failure(Exception("Overlap"))
+        return Result.success(lectureDao.insertLecture(lecture))
+    }
+
+    suspend fun updateLecture(lecture: Lecture): Result<Unit> {
+        if (isLectureOverlapping(lecture)) return Result.failure(Exception("Overlap"))
+        lectureDao.updateLecture(lecture)
+        return Result.success(Unit)
+    }
+
+    private suspend fun isLectureOverlapping(lecture: Lecture): Boolean {
+        val sameDay = lectureDao.getAllLecturesList().filter { 
+            it.dayOfWeek == lecture.dayOfWeek && it.id != lecture.id 
+        }
+        
+        val newStart = lecture.startTimeHour * 60 + lecture.startTimeMinute
+        val newEnd = lecture.endTimeHour * 60 + lecture.endTimeMinute
+        
+        return sameDay.any { existing ->
+            val exStart = existing.startTimeHour * 60 + existing.startTimeMinute
+            val exEnd = existing.endTimeHour * 60 + existing.endTimeMinute
+            
+            // Overlap if (StartA < EndB) and (EndA > StartB)
+            newStart < exEnd && newEnd > exStart
+        }
+    }
+
     suspend fun deleteLecture(lecture: Lecture) {
         attendanceDao.deleteRecordsByLecture(lecture.id)
         lectureDao.deleteLecture(lecture)
@@ -62,7 +88,12 @@ class StudySphereRepository(
         date: String,
         status: AttendanceStatus
     ) {
-        val existing = attendanceDao.getRecordByLectureAndDate(lectureId, date)
+        val existing = if (lectureId != -1L) {
+            attendanceDao.getRecordByLectureAndDate(lectureId, date)
+        } else {
+            null // Extra lectures are always unique records unless we add more logic
+        }
+
         if (existing != null) {
             attendanceDao.updateRecord(existing.copy(status = status))
         } else {
@@ -75,6 +106,38 @@ class StudySphereRepository(
                 )
             )
         }
+    }
+
+    suspend fun markExtraAttendance(
+        subjectId: Long,
+        date: String,
+        status: AttendanceStatus,
+        startH: Int, startM: Int,
+        endH: Int, endM: Int,
+        room: String
+    ) {
+        attendanceDao.insertRecord(
+            AttendanceRecord(
+                lectureId = -1L,
+                subjectId = subjectId,
+                date = date,
+                status = status,
+                isExtra = true,
+                startTimeHour = startH,
+                startTimeMinute = startM,
+                endTimeHour = endH,
+                endTimeMinute = endM,
+                room = room
+            )
+        )
+    }
+
+    suspend fun updateAttendanceStatus(record: AttendanceRecord, status: AttendanceStatus) {
+        attendanceDao.updateRecord(record.copy(status = status))
+    }
+
+    suspend fun deleteAttendanceRecord(record: AttendanceRecord) {
+        attendanceDao.deleteRecord(record)
     }
 
     suspend fun getRecordByLectureAndDate(lectureId: Long, date: String) =
@@ -113,7 +176,7 @@ class StudySphereRepository(
         val total     = attendanceDao.getTotalNonCancelledCount(subject.id)
         val cancelled = attendanceDao.getCancelledCount(subject.id)
 
-        val percentage = if (total == 0) 100f else (present.toFloat() / total.toFloat()) * 100f
+        val percentage = if (total == 0) 0f else (present.toFloat() / total.toFloat()) * 100f
         val minPct = subject.minAttendancePercent / 100f
 
         // How many can be skipped while staying above threshold?
@@ -121,7 +184,7 @@ class StudySphereRepository(
         else max(0, ((present / minPct) - total).toInt())
 
         // How many consecutive classes must be attended to recover?
-        val mustAttend = if (percentage >= subject.minAttendancePercent) 0
+        val mustAttend = if (total == 0 || percentage >= subject.minAttendancePercent) 0
         else {
             val numerator = minPct * total - present
             val denominator = 1f - minPct
@@ -130,6 +193,7 @@ class StudySphereRepository(
         }
 
         val riskLevel = when {
+            total == 0 -> RiskLevel.NEUTRAL
             percentage >= subject.minAttendancePercent + 15 -> RiskLevel.SAFE
             percentage >= subject.minAttendancePercent      -> RiskLevel.WARNING
             percentage >= subject.minAttendancePercent - 10 -> RiskLevel.DANGER

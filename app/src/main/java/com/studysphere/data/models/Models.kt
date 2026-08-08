@@ -48,10 +48,18 @@ enum class AttendanceStatus { PRESENT, ABSENT, CANCELLED }
 @Entity(tableName = "attendance_records")
 data class AttendanceRecord(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val lectureId: Long,
+    val lectureId: Long,         // -1 if extra/one-time lecture
     val subjectId: Long,
     val date: String,            // ISO-8601 "yyyy-MM-dd"
-    val status: AttendanceStatus = AttendanceStatus.PRESENT
+    val status: AttendanceStatus = AttendanceStatus.PRESENT,
+
+    // One-time session details (used if lectureId == -1)
+    val isExtra: Boolean = false,
+    val startTimeHour: Int = 0,
+    val startTimeMinute: Int = 0,
+    val endTimeHour: Int = 0,
+    val endTimeMinute: Int = 0,
+    val room: String = ""
 )
 
 // ─── Assignment ───────────────────────────────────────────────────────────────
@@ -84,7 +92,7 @@ data class SubjectAttendanceSummary(
     val riskLevel: RiskLevel
 )
 
-enum class RiskLevel { SAFE, WARNING, DANGER, CRITICAL }
+enum class RiskLevel { SAFE, WARNING, DANGER, CRITICAL, NEUTRAL }
 
 data class TodayLecture(
     val lecture: Lecture,
@@ -109,4 +117,5 @@ fun SubjectAttendanceSummary.riskColor(): String = when (riskLevel) {
     RiskLevel.WARNING  -> "#F59E0B"
     RiskLevel.DANGER   -> "#EF4444"
     RiskLevel.CRITICAL -> "#DC2626"
+    RiskLevel.NEUTRAL  -> "#94A3B8"
 }
