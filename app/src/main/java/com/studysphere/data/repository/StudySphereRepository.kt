@@ -150,7 +150,7 @@ class StudySphereRepository(
         val total     = attendanceDao.getTotalNonCancelledCount(subject.id)
         val cancelled = attendanceDao.getCancelledCount(subject.id)
 
-        val percentage = if (total == 0) 100f else (present.toFloat() / total.toFloat()) * 100f
+        val percentage = if (total == 0) 0f else (present.toFloat() / total.toFloat()) * 100f
         val minPct = subject.minAttendancePercent / 100f
 
         // How many can be skipped while staying above threshold?
@@ -158,7 +158,7 @@ class StudySphereRepository(
         else max(0, ((present / minPct) - total).toInt())
 
         // How many consecutive classes must be attended to recover?
-        val mustAttend = if (percentage >= subject.minAttendancePercent) 0
+        val mustAttend = if (total == 0 || percentage >= subject.minAttendancePercent) 0
         else {
             val numerator = minPct * total - present
             val denominator = 1f - minPct
@@ -167,6 +167,7 @@ class StudySphereRepository(
         }
 
         val riskLevel = when {
+            total == 0 -> RiskLevel.NEUTRAL
             percentage >= subject.minAttendancePercent + 15 -> RiskLevel.SAFE
             percentage >= subject.minAttendancePercent      -> RiskLevel.WARNING
             percentage >= subject.minAttendancePercent - 10 -> RiskLevel.DANGER

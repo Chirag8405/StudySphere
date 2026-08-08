@@ -92,7 +92,7 @@ data class SubjectAttendanceSummary(
     val riskLevel: RiskLevel
 )
 
-enum class RiskLevel { SAFE, WARNING, DANGER, CRITICAL }
+enum class RiskLevel { SAFE, WARNING, DANGER, CRITICAL, NEUTRAL }
 
 data class TodayLecture(
     val lecture: Lecture,
@@ -117,4 +117,5 @@ fun SubjectAttendanceSummary.riskColor(): String = when (riskLevel) {
     RiskLevel.WARNING  -> "#F59E0B"
     RiskLevel.DANGER   -> "#EF4444"
     RiskLevel.CRITICAL -> "#DC2626"
+    RiskLevel.NEUTRAL  -> "#94A3B8"
 }

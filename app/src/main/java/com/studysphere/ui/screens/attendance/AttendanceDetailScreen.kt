@@ -53,11 +53,6 @@ fun AttendanceDetailScreen(
         return
     }
 
-    val subjectColor = remember(subject.colorHex) {
-        try { Color(android.graphics.Color.parseColor(subject.colorHex)) }
-        catch (e: Exception) { Indigo500 }
-    }
-
     // Group records by date descending
     val groupedRecords = remember(records) {
         records.sortedByDescending { it.date }.groupBy { it.date }
@@ -69,7 +64,7 @@ fun AttendanceDetailScreen(
                 onClick = { showMarkDialog = true },
                 icon    = { Icon(Icons.Rounded.EditCalendar, null) },
                 text    = { Text("Mark Attendance") },
-                containerColor = subjectColor,
+                containerColor = MaterialTheme.colorScheme.primary,
                 contentColor   = Color.White
             )
         }
@@ -82,14 +77,14 @@ fun AttendanceDetailScreen(
             // Summary card
             item {
                 if (summary != null) {
-                    DetailSummaryCard(summary = summary, subjectColor = subjectColor)
+                    DetailSummaryCard(summary = summary)
                 }
             }
 
             // Lecture schedule card
             if (lectures.isNotEmpty()) {
                 item {
-                    LectureScheduleCard(lectures = lectures, subject = subject)
+                    LectureScheduleCard(lectures = lectures)
                 }
             }
 
@@ -119,7 +114,6 @@ fun AttendanceDetailScreen(
                             date       = date,
                             records    = dayRecords,
                             lectures   = lectures,
-                            subject    = subject,
                             onStatusChange = { record, newStatus ->
                                 viewModel.updateAttendanceStatus(record, newStatus)
                             },
@@ -136,7 +130,6 @@ fun AttendanceDetailScreen(
         MarkAttendanceDialog(
             subject      = subject,
             lectures     = lectures,
-            subjectColor = subjectColor,
             onDismiss    = { showMarkDialog = false },
             onMark       = { lectureId, date, status ->
                 viewModel.markAttendance(lectureId, subjectId, date, status)
@@ -151,30 +144,22 @@ fun AttendanceDetailScreen(
 
     // Delete confirmation
     if (recordToDelete != null) {
-        AlertDialog(
-            onDismissRequest = { recordToDelete = null },
-            title = { Text("Delete Record?") },
-            text = { Text("This will permanently remove this attendance record. The subject and timetable will not be affected.") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        recordToDelete?.let { viewModel.deleteAttendanceRecord(it) }
-                        recordToDelete = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                ) { Text("Delete") }
+        ConfirmDeleteDialog(
+            title   = "Delete Record?",
+            message = "This will permanently remove this attendance record. The subject and timetable will not be affected.",
+            onConfirm = {
+                recordToDelete?.let { viewModel.deleteAttendanceRecord(it) }
+                recordToDelete = null
             },
-            dismissButton = {
-                TextButton(onClick = { recordToDelete = null }) { Text("Cancel") }
-            }
+            onDismiss = { recordToDelete = null }
         )
     }
 }
 
 @Composable
-private fun DetailSummaryCard(summary: SubjectAttendanceSummary, subjectColor: Color) {
+private fun DetailSummaryCard(summary: SubjectAttendanceSummary) {
     SphereCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             // Big percentage
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -185,7 +170,7 @@ private fun DetailSummaryCard(summary: SubjectAttendanceSummary, subjectColor: C
                     Text("${summary.percentage.toInt()}%",
                          style = MaterialTheme.typography.displayMedium,
                          fontWeight = FontWeight.Bold,
-                         color = subjectColor)
+                         color = MaterialTheme.colorScheme.onBackground)
                     Text("of ${summary.subject.minAttendancePercent.toInt()}% required",
                          style = MaterialTheme.typography.bodySmall,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -194,14 +179,16 @@ private fun DetailSummaryCard(summary: SubjectAttendanceSummary, subjectColor: C
                     RiskIndicator(summary.riskLevel)
                     Text("${summary.attended} / ${summary.totalClasses} classes",
                          style = MaterialTheme.typography.bodySmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         fontWeight = FontWeight.Bold)
                 }
             }
 
             AttendanceProgressBar(
                 percentage   = summary.percentage,
                 minThreshold = summary.subject.minAttendancePercent,
-                colorHex     = summary.subject.colorHex
+                colorHex     = "",
+                totalClasses = summary.totalClasses
             )
 
             // Insight cards
@@ -209,13 +196,13 @@ private fun DetailSummaryCard(summary: SubjectAttendanceSummary, subjectColor: C
                 InsightMini(
                     label = "Can Skip",
                     value = if (summary.canSkip > 0) summary.canSkip.toString() else "0",
-                    color = if (summary.canSkip > 0) Green500 else Slate500,
+                    color = if (summary.canSkip > 0) Green500 else Gray500,
                     icon  = Icons.Rounded.EventBusy,
                     modifier = Modifier.weight(1f)
                 )
                 InsightMini(
                     label = "Must Attend",
-                    value = if (summary.mustAttend > 0) summary.mustAttend.toString() else "On Track",
+                    value = if (summary.mustAttend > 0) summary.mustAttend.toString() else "Safe",
                     color = if (summary.mustAttend > 0) Red500 else Green500,
                     icon  = if (summary.mustAttend > 0) Icons.Rounded.Warning else Icons.Rounded.Verified,
                     modifier = Modifier.weight(1f)
@@ -241,27 +228,28 @@ private fun InsightMini(
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(10.dp))
-            .background(color.copy(alpha = 0.08f))
-            .padding(10.dp),
+            .background(color.copy(alpha = 0.1f))
+            .padding(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        Icon(icon, null, Modifier.size(16.dp), tint = color)
+        Icon(icon, null, Modifier.size(18.dp), tint = color)
         Text(value, style = MaterialTheme.typography.titleSmall,
              fontWeight = FontWeight.Bold, color = color)
         Text(label, style = MaterialTheme.typography.labelSmall,
-             color = MaterialTheme.colorScheme.onSurfaceVariant)
+             color = MaterialTheme.colorScheme.onSurfaceVariant,
+             fontWeight = FontWeight.Bold)
     }
 }
 
 @Composable
-private fun LectureScheduleCard(lectures: List<Lecture>, subject: Subject) {
+private fun LectureScheduleCard(lectures: List<Lecture>) {
     val dayNames = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 
     SphereCard(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Weekly Schedule", style = MaterialTheme.typography.titleSmall,
-                 fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onBackground)
+                 fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onBackground)
             lectures.sortedWith(compareBy({ it.dayOfWeek }, { it.startTimeHour }, { it.startTimeMinute }))
                 .forEach { lecture ->
                 val timeStr = "%02d:%02d – %02d:%02d".format(
@@ -274,25 +262,26 @@ private fun LectureScheduleCard(lectures: List<Lecture>, subject: Subject) {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Box(
                             modifier = Modifier
                                 .size(width = 36.dp, height = 22.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant),
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(MaterialTheme.colorScheme.secondaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(dayNames.getOrElse(lecture.dayOfWeek - 1) { "?" },
                                  style = MaterialTheme.typography.labelSmall,
-                                 fontWeight = FontWeight.SemiBold,
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                 fontWeight = FontWeight.Bold,
+                                 color = MaterialTheme.colorScheme.onSecondaryContainer)
                         }
                         Text(timeStr, style = MaterialTheme.typography.bodySmall,
-                             color = MaterialTheme.colorScheme.onBackground)
+                             color = MaterialTheme.colorScheme.onBackground,
+                             fontWeight = FontWeight.Bold)
                     }
                     if (lecture.room.isNotBlank()) {
                         Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Icon(Icons.Rounded.LocationOn, null,
                                  Modifier.size(12.dp),
                                  tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -311,7 +300,6 @@ private fun AttendanceDayGroup(
     date: String,
     records: List<AttendanceRecord>,
     lectures: List<Lecture>,
-    subject: Subject,
     onStatusChange: (AttendanceRecord, AttendanceStatus) -> Unit,
     onDelete: (AttendanceRecord) -> Unit
 ) {
@@ -322,11 +310,11 @@ private fun AttendanceDayGroup(
         } catch (e: Exception) { date }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(parsedDate, style = MaterialTheme.typography.labelMedium,
-             fontWeight = FontWeight.SemiBold,
+             fontWeight = FontWeight.Bold,
              color = MaterialTheme.colorScheme.onSurfaceVariant,
-             modifier = Modifier.padding(vertical = 2.dp))
+             modifier = Modifier.padding(vertical = 4.dp))
         records.forEach { record ->
             val lecture = lectures.find { it.id == record.lectureId }
             AttendanceRecordRow(
@@ -356,20 +344,20 @@ private fun AttendanceRecordRow(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (record.isExtra) {
                         val timeStr = "%02d:%02d".format(record.startTimeHour, record.startTimeMinute)
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Icon(Icons.Rounded.Star, null, Modifier.size(14.dp), tint = Amber500)
                             Text(timeStr, style = MaterialTheme.typography.bodySmall,
-                                 fontWeight = FontWeight.Medium,
-                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                 fontWeight = FontWeight.Bold,
+                                 color = MaterialTheme.colorScheme.onBackground)
                         }
                     } else if (lecture != null) {
                         val timeStr = "%02d:%02d".format(lecture.startTimeHour, lecture.startTimeMinute)
                         Text(timeStr, style = MaterialTheme.typography.bodySmall,
-                             fontWeight = FontWeight.Medium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             fontWeight = FontWeight.Bold,
+                             color = MaterialTheme.colorScheme.onBackground)
                     }
                     AttendanceStatusChip(record.status)
                 }
@@ -377,20 +365,21 @@ private fun AttendanceRecordRow(
                     imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
                     contentDescription = "Toggle",
                     modifier = Modifier.size(18.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.5f)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.4f)
                 )
             }
             AnimatedVisibility(visible = expanded) {
-                Column(modifier = Modifier.padding(top = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Column(modifier = Modifier.padding(top = 12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     if (record.isExtra && record.room.isNotBlank()) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Icon(Icons.Rounded.LocationOn, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                             Text(record.room, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
 
                     Text("Change Status", style = MaterialTheme.typography.labelSmall,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
+                         color = MaterialTheme.colorScheme.onSurfaceVariant,
+                         fontWeight = FontWeight.Bold)
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -407,12 +396,15 @@ private fun AttendanceRecordRow(
                                 FilterChip(
                                     selected = isSelected,
                                     onClick  = { if (!isSelected) onStatusChange(status) },
-                                    label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                                    label    = { Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
                                     colors   = FilterChipDefaults.filterChipColors(
-                                        selectedContainerColor = chipColor.copy(0.18f),
-                                        selectedLabelColor     = chipColor
+                                        selectedContainerColor = chipColor,
+                                        selectedLabelColor     = Color.White,
+                                        containerColor = chipColor.copy(alpha = 0.1f),
+                                        labelColor = chipColor
                                     ),
-                                    shape    = RoundedCornerShape(8.dp)
+                                    shape    = RoundedCornerShape(8.dp),
+                                    border = null
                                 )
                             }
                         }
@@ -432,7 +424,6 @@ private fun AttendanceRecordRow(
 private fun MarkAttendanceDialog(
     subject: Subject,
     lectures: List<Lecture>,
-    subjectColor: Color,
     onDismiss: () -> Unit,
     onMark: (Long, String, AttendanceStatus) -> Unit,
     onMarkExtra: (String, AttendanceStatus, Int, Int, Int, Int, String) -> Unit
@@ -484,45 +475,46 @@ private fun MarkAttendanceDialog(
         (startH * 60 + startM) < (endH * 60 + endM)
     }
 
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(20.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(20.dp),
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
+        shape = shape,
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SubjectColorDot(subject.colorHex, size = 10.dp)
-                Text(if (isExtraMode) "Extra Lecture" else "Mark Attendance",
-                     style = MaterialTheme.typography.headlineSmall)
-            }
+            Text(if (isExtraMode) "Extra Lecture" else "Mark Attendance",
+                 style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(14.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp), modifier = Modifier.verticalScroll(rememberScrollState())) {
                 // Mode Switcher
                 TabRow(
                     selectedTabIndex = if (isExtraMode) 1 else 0,
-                    containerColor = Color.Transparent,
-                    contentColor = subjectColor,
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    contentColor = MaterialTheme.colorScheme.onSurface,
                     divider = {},
+                    modifier = Modifier.clip(RoundedCornerShape(10.dp)),
                     indicator = { tabPositions ->
-                        TabRowDefaults.Indicator(
+                        TabRowDefaults.SecondaryIndicator(
                             Modifier.tabIndicatorOffset(tabPositions[if (isExtraMode) 1 else 0]),
-                            color = subjectColor
+                            color = PrimaryPurple
                         )
                     }
                 ) {
                     Tab(selected = !isExtraMode, onClick = { isExtraMode = false }) {
-                        Text("Timetable", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
+                        Text("Timetable", modifier = Modifier.padding(vertical = 10.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = if (!isExtraMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     Tab(selected = isExtraMode, onClick = { isExtraMode = true }) {
-                        Text("Extra/Surprise", modifier = Modifier.padding(vertical = 8.dp), style = MaterialTheme.typography.labelLarge)
+                        Text("Extra", modifier = Modifier.padding(vertical = 10.dp), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, color = if (isExtraMode) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
 
                 if (!isExtraMode) {
                     // Lecture selector
                     Text("Select Scheduled Lecture", style = MaterialTheme.typography.labelMedium,
-                         color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                         color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         lectures.forEach { lecture ->
                             val timeStr = "%02d:%02d – %02d:%02d".format(
                                 lecture.startTimeHour, lecture.startTimeMinute,
@@ -535,48 +527,51 @@ private fun MarkAttendanceDialog(
                                     .fillMaxWidth()
                                     .clip(RoundedCornerShape(10.dp))
                                     .background(
-                                        if (isSelected) subjectColor.copy(0.12f)
+                                        if (isSelected) MaterialTheme.colorScheme.primary
                                         else MaterialTheme.colorScheme.surfaceVariant
                                     )
                                     .clickable { selectedLectureId = lecture.id }
-                                    .padding(10.dp),
+                                    .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text("$dayName · $timeStr",
                                      style = MaterialTheme.typography.bodySmall,
-                                     color = if (isSelected) subjectColor
+                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                     color = if (isSelected) Color.White
                                      else MaterialTheme.colorScheme.onSurfaceVariant)
                                 if (isSelected) {
                                     Icon(Icons.Rounded.CheckCircle, null,
-                                         Modifier.size(16.dp), tint = subjectColor)
+                                         Modifier.size(16.dp), tint = Color.White)
                                 }
                             }
                         }
                     }
                 } else {
                     // Extra lecture inputs
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text("Time & Room", style = MaterialTheme.typography.labelMedium,
-                             color = MaterialTheme.colorScheme.onSurfaceVariant)
+                             color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             OutlinedCard(
                                 onClick = { showStartTimePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, if (LocalDarkTheme.current) Gray700 else Gray400)
                             ) {
-                                Column(Modifier.padding(10.dp)) {
-                                    Text("Start Time", style = MaterialTheme.typography.labelSmall)
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("Start Time", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                     Text("%02d:%02d".format(startH, startM), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                                 }
                             }
                             OutlinedCard(
                                 onClick = { showEndTimePicker = true },
                                 modifier = Modifier.weight(1f),
-                                shape = RoundedCornerShape(12.dp)
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, if (LocalDarkTheme.current) Gray700 else Gray400)
                             ) {
-                                Column(Modifier.padding(10.dp)) {
-                                    Text("End Time", style = MaterialTheme.typography.labelSmall)
+                                Column(Modifier.padding(12.dp)) {
+                                    Text("End Time", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                     Text("%02d:%02d".format(endH, endM), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
                                 }
                             }
@@ -596,7 +591,8 @@ private fun MarkAttendanceDialog(
                                 "End time must be after start time",
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(start = 4.dp)
+                                modifier = Modifier.padding(start = 4.dp),
+                                fontWeight = FontWeight.Bold
                             )
                         }
                     }
@@ -604,13 +600,14 @@ private fun MarkAttendanceDialog(
 
                 // Date input
                 Text("Date", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 OutlinedCard(
                     onClick = { showDatePicker = true },
                     modifier = Modifier
                         .fillMaxWidth()
                         .defaultMinSize(minHeight = 56.dp),
-                    shape = RoundedCornerShape(12.dp)
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, if (LocalDarkTheme.current) Gray700 else Gray400)
                 ) {
                     Row(
                         modifier = Modifier
@@ -623,13 +620,17 @@ private fun MarkAttendanceDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
-                            Icon(Icons.Rounded.CalendarMonth, contentDescription = null)
+                            Icon(
+                                imageVector = Icons.Rounded.CalendarMonth,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             Column {
                                 Text(
                                     text = selectedDate.toAttendanceDateLabel(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onBackground,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = selectedDate,
@@ -638,16 +639,12 @@ private fun MarkAttendanceDialog(
                                 )
                             }
                         }
-                        Icon(
-                            Icons.Rounded.EditCalendar,
-                            contentDescription = "Select attendance date"
-                        )
                     }
                 }
 
                 // Status selector
                 Text("Status", style = MaterialTheme.typography.labelMedium,
-                     color = MaterialTheme.colorScheme.onSurfaceVariant)
+                     color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     AttendanceStatus.values().forEach { status ->
                         val isSelected = selectedStatus == status
@@ -659,12 +656,15 @@ private fun MarkAttendanceDialog(
                         FilterChip(
                             selected = isSelected,
                             onClick  = { selectedStatus = status },
-                            label    = { Text(label, style = MaterialTheme.typography.labelSmall) },
+                            label    = { Text(label, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold) },
                             colors   = FilterChipDefaults.filterChipColors(
-                                selectedContainerColor = chipColor.copy(0.18f),
-                                selectedLabelColor     = chipColor
+                                selectedContainerColor = chipColor,
+                                selectedLabelColor     = Color.White,
+                                containerColor = chipColor.copy(alpha = 0.1f),
+                                labelColor = chipColor
                             ),
-                            shape = RoundedCornerShape(8.dp)
+                            shape = RoundedCornerShape(8.dp),
+                            border = null
                         )
                     }
                 }
@@ -682,19 +682,27 @@ private fun MarkAttendanceDialog(
                     }
                 },
                 enabled = if (isExtraMode) isTimeValid else selectedLectureId != 0L,
-                colors = ButtonDefaults.buttonColors(containerColor = subjectColor),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = Color.White
+                ),
                 shape  = RoundedCornerShape(12.dp)
             ) { Text("Save") }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Bold)
+            }
         }
     )
 
     if (showDatePicker) {
         val initialDate = selectedDate.toLocalDateOrNull() ?: LocalDate.now()
         val pickerState = rememberDatePickerState(
-            initialSelectedDateMillis = initialDate.toEpochMillis(),
+            initialSelectedDateMillis = initialDate.toUtcEpochMillis(),
             selectableDates = object : SelectableDates {
                 override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                     val date = Instant.ofEpochMilli(utcTimeMillis)
@@ -719,30 +727,40 @@ private fun MarkAttendanceDialog(
             }
         )
 
+        val dShape = RoundedCornerShape(20.dp)
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
+            modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, dShape),
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val millis = pickerState.selectedDateMillis ?: initialDate.toEpochMillis()
-                        selectedDate = millis.toIsoDateString()
+                        val millis = pickerState.selectedDateMillis ?: initialDate.toUtcEpochMillis()
+                        selectedDate = millis.toIsoDateStringFromUtc()
                         showDatePicker = false
                     }
                 ) {
-                    Text("OK")
+                    Text("OK", fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDatePicker = false }) {
-                    Text("Cancel")
+                    Text("Cancel", color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold)
                 }
-            }
+            },
+            shape = dShape
         ) {
             DatePicker(
                 state = pickerState,
                 showModeToggle = false,
                 title = null,
-                headline = null
+                headline = null,
+                colors = DatePickerDefaults.colors(
+                    todayDateBorderColor = PrimaryPurple,
+                    todayContentColor = PrimaryPurple,
+                    selectedDayContainerColor = PrimaryPurple,
+                    selectedDayContentColor = Color.White,
+                    containerColor = if (LocalDarkTheme.current) PureBlack else Color.White
+                )
             )
         }
     }
@@ -787,20 +805,32 @@ private fun TimePickerDialog(
 ) {
     val state = rememberTimePickerState(initialHour, initialMinute, is24Hour = true)
 
+    val isDark = LocalDarkTheme.current
+    val shape = RoundedCornerShape(20.dp)
     AlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.border(1.dp, if (isDark) Gray700 else Gray400, shape),
+        containerColor = if (isDark) PureBlack else Color.White,
         confirmButton = {
-            TextButton(onClick = { onTimeSelected(state.hour, state.minute) }) { Text("OK") }
+            TextButton(onClick = { onTimeSelected(state.hour, state.minute) }) {
+                Text("OK", fontWeight = FontWeight.Bold)
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
+            ) {
+                Text("Cancel", fontWeight = FontWeight.Bold)
+            }
         },
-        title = { Text(title) },
+        title = { Text(title, fontWeight = FontWeight.Bold) },
         text = {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                 TimePicker(state = state)
             }
-        }
+        },
+        shape = shape
     )
 }
 
@@ -811,13 +841,28 @@ private fun String.toAttendanceDateLabel(): String {
     return date.format(DateTimeFormatter.ofPattern("EEE, d MMM yyyy"))
 }
 
-private fun LocalDate.toEpochMillis(): Long {
-    return atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+private fun LocalDate.toUtcEpochMillis(): Long {
+    return atStartOfDay(ZoneId.of("UTC")).toInstant().toEpochMilli()
+}
+
+private fun Long.toIsoDateStringFromUtc(): String {
+    return Instant.ofEpochMilli(this)
+        .atZone(ZoneId.of("UTC"))
+        .toLocalDate()
+        .toString()
+}
+
+private fun String.toIsoDateString(): String {
+    val millis = this.toLocalDateOrNull()?.toUtcEpochMillis() ?: return this
+    return Instant.ofEpochMilli(millis)
+        .atZone(ZoneId.of("UTC"))
+        .toLocalDate()
+        .toString()
 }
 
 private fun Long.toIsoDateString(): String {
     return Instant.ofEpochMilli(this)
-        .atZone(ZoneId.systemDefault())
+        .atZone(ZoneId.of("UTC"))
         .toLocalDate()
         .toString()
 }
