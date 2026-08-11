@@ -27,6 +27,7 @@ import com.studysphere.ui.theme.*
 import com.studysphere.viewmodel.MainViewModel
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -44,9 +45,14 @@ fun DashboardScreen(
     val summaries          by viewModel.attendanceSummariesRefreshed.collectAsState()
     val refreshing         by viewModel.isRefreshing.collectAsState()
     val deadlineWindowDays by viewModel.deadlineWindowDays.collectAsState()
+    val selectedDate       by viewModel.selectedDate.collectAsState()
 
     val today = LocalDate.now()
-    val dateStr = today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM"))
+    val isToday = selectedDate == today
+    val isFutureDate = selectedDate.isAfter(today)
+    
+    val dateDisplayStr = if (isToday) "Today's Schedule" else selectedDate.format(DateTimeFormatter.ofPattern("EEEE, d MMMM"))
+    val headerDateStr = today.format(DateTimeFormatter.ofPattern("EEEE, d MMMM"))
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = refreshing,
@@ -65,7 +71,7 @@ fun DashboardScreen(
             contentPadding = PaddingValues(bottom = 100.dp)
         ) {
             item {
-                DashboardHeader(dateStr = dateStr)
+                DashboardHeader(dateStr = headerDateStr)
             }
 
             item {
@@ -80,12 +86,18 @@ fun DashboardScreen(
 
             item {
                 SectionHeader(
-                    title = "Today's Schedule",
+                    title = dateDisplayStr,
                     action = "View All",
                     onAction = onNavigateToAttendance,
                     modifier = Modifier.padding(horizontal = 16.dp)
                 )
                 Spacer(Modifier.height(10.dp))
+                
+                DateSlider(
+                    selectedDate = selectedDate,
+                    onDateSelected = { viewModel.setSelectedDate(it) },
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
             }
 
             if (todayLectures.isEmpty()) {
@@ -96,8 +108,8 @@ fun DashboardScreen(
                     ) {
                         EmptyState(
                             icon     = Icons.Rounded.EventAvailable,
-                            title    = "No Classes Today",
-                            subtitle = "Enjoy your free day!",
+                            title    = if (isToday) "No Classes Today" else "No Classes Scheduled",
+                            subtitle = if (isToday) "Enjoy your free day!" else "Nothing for ${selectedDate.format(DateTimeFormatter.ofPattern("d MMM"))}",
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
@@ -110,6 +122,7 @@ fun DashboardScreen(
                         onMark       = { status ->
                             viewModel.quickMarkToday(todayLecture.lecture.id, todayLecture.subject.id, status)
                         },
+                        canMark      = !isFutureDate,
                         modifier     = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                     )
                 }
@@ -354,10 +367,146 @@ private fun StatCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DateSlider(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val today = LocalDate.now()
+    var showDatePicker by remember { mutableStateOf(false) }
+
+    // Display a range of dates: 2 weeks back to 2 weeks forward
+    val dates = remember {
+        (-14..14).map { today.plusDays(it.toLong()) }
+    }
+    
+    // Initial index to keep today in the middle. 
+    // With -14 to 14, today is at index 14.
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = 11)
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.ChevronLeft,
+                    null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            LazyRow(
+                state = listState,
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(horizontal = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(dates) { date ->
+                    val isSelected = date == selectedDate
+                    val isToday = date == today
+                    
+                    Surface(
+                        onClick = { onDateSelected(date) },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isSelected) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f) 
+                                else if (isToday) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else Color.Transparent,
+                        border = if (isSelected) BorderStroke(1.dp, MaterialTheme.colorScheme.outline) 
+                                 else if (isToday) BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant) 
+                                 else null,
+                        modifier = Modifier.width(54.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(vertical = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            Text(
+                                text = date.format(DateTimeFormatter.ofPattern("EEE")),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = date.dayOfMonth.toString(),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isSelected) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+            
+            IconButton(
+                onClick = { showDatePicker = true },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    null,
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+
+    if (showDatePicker) {
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = selectedDate.atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        )
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        val date = java.time.Instant.ofEpochMilli(it)
+                            .atZone(ZoneId.systemDefault())
+                            .toLocalDate()
+                        onDateSelected(date)
+                    }
+                    showDatePicker = false
+                }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurface)) {
+                    Text("OK", fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }, 
+                    colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    Text("Cancel", fontWeight = FontWeight.Bold)
+                }
+            },
+            colors = DatePickerDefaults.colors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            DatePicker(
+                state = datePickerState,
+                colors = DatePickerDefaults.colors(
+                    selectedDayContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedDayContentColor = Color.White,
+                    todayContentColor = MaterialTheme.colorScheme.primary,
+                    todayDateBorderColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    }
+}
+
 @Composable
 private fun TodayLectureCard(
     todayLecture: TodayLecture,
     onMark: (AttendanceStatus) -> Unit,
+    canMark: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val startH = todayLecture.lecture.startTimeHour
@@ -373,10 +522,18 @@ private fun TodayLectureCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Column(modifier = Modifier.weight(1f).padding(start = 6.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(todayLecture.subject.name,
-                     style = MaterialTheme.typography.titleSmall,
-                     fontWeight = FontWeight.Bold,
-                     color = MaterialTheme.colorScheme.onBackground)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(todayLecture.subject.name,
+                         style = MaterialTheme.typography.titleSmall,
+                         fontWeight = FontWeight.Bold,
+                         color = MaterialTheme.colorScheme.onBackground)
+                    if (todayLecture.lecture.id == -1L) {
+                        Icon(Icons.Rounded.Star, null, Modifier.size(14.dp), tint = Amber500)
+                    }
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -408,7 +565,7 @@ private fun TodayLectureCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 AttendanceStatusChip(todayLecture.attendanceRecord?.status)
-                if (todayLecture.attendanceRecord == null) {
+                if (todayLecture.attendanceRecord == null && canMark) {
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         QuickMarkButton("P", Green500) { onMark(AttendanceStatus.PRESENT) }
                         QuickMarkButton("A", Red500) { onMark(AttendanceStatus.ABSENT) }

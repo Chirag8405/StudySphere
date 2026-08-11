@@ -207,6 +207,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // ── Attendance ────────────────────────────────────────────────────────────
 
     fun markAttendance(lectureId: Long, subjectId: Long, date: String, status: AttendanceStatus) {
+        if (LocalDate.parse(date).isAfter(LocalDate.now())) return
         viewModelScope.launch {
             repository.markAttendance(lectureId, subjectId, date, status)
             refreshSummaries()
@@ -217,6 +218,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         subjectId: Long, date: String, status: AttendanceStatus,
         startH: Int, startM: Int, endH: Int, endM: Int, room: String
     ) {
+        if (LocalDate.parse(date).isAfter(LocalDate.now())) return
         viewModelScope.launch {
             repository.markExtraAttendance(subjectId, date, status, startH, startM, endH, endM, room)
             refreshSummaries()
@@ -269,11 +271,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // ── Today's Lectures ──────────────────────────────────────────────────────
+    // ── Selected Date for Dashboard ───────────────────────────────────────────
+
+    private val _selectedDate = MutableStateFlow(LocalDate.now())
+    val selectedDate: StateFlow<LocalDate> = _selectedDate.asStateFlow()
+
+    fun setSelectedDate(date: LocalDate) {
+        _selectedDate.value = date
+    }
+
+    // ── Today's (or Selected Date's) Lectures ─────────────────────────────────
 
     val todayLectures: StateFlow<List<TodayLecture>> =
-        subjects.flatMapLatest { subjectList ->
-            repository.getTodayLectures(subjectList)
+        combine(subjects, _selectedDate) { subjectList, date ->
+            subjectList to date
+        }.flatMapLatest { (subjectList, date) ->
+            repository.getLecturesForDate(date, subjectList)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ── Assignments ───────────────────────────────────────────────────────────
@@ -325,11 +338,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun getAssignmentsBySubject(subjectId: Long) = repository.getAssignmentsBySubject(subjectId)
 
-    // ── Quick Attendance Mark (from today's list) ──────────────────────────────
+    // ── Quick Attendance Mark ─────────────────────────────────────────────────
 
     fun quickMarkToday(lectureId: Long, subjectId: Long, status: AttendanceStatus) {
+        val date = _selectedDate.value
+        // Safety check: Don't allow marking attendance for future dates
+        if (date.isAfter(LocalDate.now())) return
+
         viewModelScope.launch {
-            repository.markAttendance(lectureId, subjectId, LocalDate.now().toString(), status)
+            repository.markAttendance(lectureId, subjectId, date.toString(), status)
             refreshSummaries()
         }
     }
@@ -609,7 +626,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 for (i in 0 until attendanceJson.length()) {
                     val r             = attendanceJson.getJSONObject(i)
                     val remappedSubId = subjectIdMap[r.getLong("subjectId")] ?: continue
-                    val remappedLecId = lectureIdMap[r.getLong("lectureId")]  ?: continue
+                    
+                    val oldLecId = r.getLong("lectureId")
+                    val remappedLecId = if (oldLecId == -1L) -1L else (lectureIdMap[oldLecId] ?: continue)
+                    
                     val status        = runCatching {
                         AttendanceStatus.valueOf(r.getString("status"))
                     }.getOrDefault(AttendanceStatus.PRESENT)

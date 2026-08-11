@@ -212,22 +212,46 @@ class StudySphereRepository(
         )
     }
 
-    // ── Today Lectures ────────────────────────────────────────────────────────
+    // ── Lectures For Specific Date ────────────────────────────────────────────
 
-    fun getTodayLectures(subjects: List<Subject>): Flow<List<TodayLecture>> {
-        val today     = LocalDate.now()
-        val todayDow  = today.dayOfWeek.value
-        val todayStr  = today.toString()
+    fun getLecturesForDate(date: LocalDate, subjects: List<Subject>): Flow<List<TodayLecture>> {
+        val dow      = date.dayOfWeek.value
+        val dateStr  = date.toString()
 
-        return lectureDao.getLecturesByDay(todayDow).combine(
-            attendanceDao.getRecordsByDate(todayStr)
+        return combine(
+            lectureDao.getLecturesByDay(dow),
+            attendanceDao.getRecordsByDate(dateStr)
         ) { lectures, records ->
-            lectures.mapNotNull { lecture ->
+            val scheduled = lectures.mapNotNull { lecture ->
                 val subject = subjects.find { it.id == lecture.subjectId } ?: return@mapNotNull null
                 val record  = records.find { it.lectureId == lecture.id }
                 TodayLecture(lecture, subject, record)
-            }.sortedBy { it.lecture.startTimeHour * 60 + it.lecture.startTimeMinute }
+            }
+
+            val extras = records.filter { it.isExtra }.mapNotNull { record ->
+                val subject = subjects.find { it.id == record.subjectId } ?: return@mapNotNull null
+                // Create a synthetic lecture object for display
+                val lecture = Lecture(
+                    id = -1L, // Indicates extra
+                    subjectId = subject.id,
+                    dayOfWeek = dow,
+                    startTimeHour = record.startTimeHour,
+                    startTimeMinute = record.startTimeMinute,
+                    endTimeHour = record.endTimeHour,
+                    endTimeMinute = record.endTimeMinute,
+                    room = record.room
+                )
+                TodayLecture(lecture, subject, record)
+            }
+
+            (scheduled + extras).sortedBy { it.lecture.startTimeHour * 60 + it.lecture.startTimeMinute }
         }
+    }
+
+    // ── Today Lectures ────────────────────────────────────────────────────────
+
+    fun getTodayLectures(subjects: List<Subject>): Flow<List<TodayLecture>> {
+        return getLecturesForDate(LocalDate.now(), subjects)
     }
 
     // ── Upcoming Assignments ──────────────────────────────────────────────────
