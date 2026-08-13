@@ -248,12 +248,11 @@ fun DashboardScreen(
 private fun DashboardHeader(dateStr: String) {
     val hour = LocalTime.now().hour
     val greeting = when (hour) {
-        in 5..8 -> "Up Early?"
-        in 9..11 -> "Good Morning"
+        in 5..6 -> "Up Early?"
+        in 7..11 -> "Good Morning"
         in 12..16 -> "Good Afternoon"
-        in 17..20 -> "Good Evening"
-        in 21..23 -> "Still Up?"
-        else -> "Up Late?"
+        in 17..23 -> "Good Evening"
+        else -> "Still Awake?"
     }
 
     Box(
