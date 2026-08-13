@@ -1,5 +1,5 @@
 Stable release (v1.2.4):
-[StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/v1.2.4/StudySphere-v1.2.4.apk)
+[StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/v1.2.5/StudySphere-v1.2.5.apk)
 
 # StudySphere
 
