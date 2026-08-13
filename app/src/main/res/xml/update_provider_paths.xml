@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Save as: app/src/main/res/xml/update_provider_paths.xml
+
+    Exposes the app's external "Downloads" folder so FileProvider can hand
+    a content:// URI to Android's package installer.
+-->
+<paths>
+    <external-files-path
+        name="update_apk"
+        path="Download/" />
+</paths>
