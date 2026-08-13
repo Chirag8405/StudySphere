@@ -79,16 +79,40 @@ Debug APK output:
 app/src/main/java/com/studysphere/
   data/
     db/
+      Converters.kt
+      Daos.kt
+      StudySphereDatabase.kt
     models/
+      Models.kt
     repository/
+      StudySphereRepository.kt
   ui/
     components/
+      SharedComponents.kt
     screens/
+      assignments/
+        AssignmentsScreen.kt
+      attendance/
+        AttendanceScreen.kt
+        AttendanceDetailScreen.kt
+      dashboard/
+        DashboardScreen.kt
+      settings/
+        SettingsScreen.kt
+      SubjectsScreen.kt
     theme/
+      Color.kt
+      Theme.kt
+      Type.kt
     Navigation.kt
     StudySphereApp.kt
+  update/
+    UpdateDialog.kt
+    UpdateManager.kt
+    UpdateViewModel.kt
   viewmodel/
     MainViewModel.kt
+  MainActivity.kt
 ```
 
 ## Data and Privacy
