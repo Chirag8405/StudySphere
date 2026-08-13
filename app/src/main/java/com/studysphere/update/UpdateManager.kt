@@ -24,12 +24,12 @@ import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
 
-//  Data Models 
+//  Data Models
 
 data class GithubRelease(
     val tagName: String,           // e.g. "v1.3.0"
     val versionName: String,       // e.g. "1.3.0"
-    val versionCode: Int,          // parsed from tag, e.g. 130
+    val versionCode: Int,          // derived from tag via same formula as build.gradle
     val releaseNotes: String,
     val apkDownloadUrl: String,
     val htmlUrl: String
@@ -55,7 +55,7 @@ private sealed class FetchReleaseResult {
     data class Failure(val reason: String) : FetchReleaseResult()
 }
 
-//  UpdateManager 
+//  UpdateManager
 
 class UpdateManager(private val context: Context) {
 
@@ -70,7 +70,7 @@ class UpdateManager(private val context: Context) {
         private val APK_NAME_REGEX = Regex(""".+\.apk$""", RegexOption.IGNORE_CASE)
     }
 
-    //  Version check 
+    //  Version check
 
     /**
      * Fetches the latest GitHub release and compares it against the installed versionCode.
@@ -160,7 +160,7 @@ class UpdateManager(private val context: Context) {
             }
 
             val assetNames = mutableListOf<String>()
-            val apkAssets = mutableListOf<Pair<String, String>>() // name to download URL
+            val apkAssets = mutableListOf<Pair<String, String>>()
             for (i in 0 until assetsJson.length()) {
                 val asset = assetsJson.getJSONObject(i)
                 val name = asset.optString("name", "")
@@ -179,15 +179,13 @@ class UpdateManager(private val context: Context) {
             }
 
             if (apkAssets.size > 1) {
-                // We expect exactly one APK per release; more than one means something
-                // unexpected about the release, so surface it instead of guessing.
                 return FetchReleaseResult.Failure(
                     "Release $tag has ${apkAssets.size} .apk files attached, expected exactly one: " +
                         apkAssets.joinToString(", ") { it.first }
                 )
             }
 
-            val (apkName, apkUrl) = apkAssets.first()
+            val (_, apkUrl) = apkAssets.first()
 
             return FetchReleaseResult.Success(
                 GithubRelease(
@@ -240,9 +238,9 @@ class UpdateManager(private val context: Context) {
     }
 
     /**
-     * Converts "1.3.0" → 130, "1.10.2" → 11002, etc.
-     * Must match the versionCode logic you use in build.gradle.
-     * Default: major*10000 + minor*100 + patch
+     * Converts "1.3.0" → 1_003_000, "1.10.2" → 1_010_002, etc.
+     * Formula: major * 1_000_000 + minor * 1_000 + patch.
+     * Must stay in sync with computeVersionCode() in build.gradle.
      * Returns null if versionName isn't in a recognizable numeric dotted format.
      */
     private fun parseVersionCode(versionName: String): Int? {
@@ -252,10 +250,10 @@ class UpdateManager(private val context: Context) {
         val major = nums.getOrElse(0) { 0 }
         val minor = nums.getOrElse(1) { 0 }
         val patch = nums.getOrElse(2) { 0 }
-        return major * 10_000 + minor * 100 + patch
+        return major * 1_000_000 + minor * 1_000 + patch
     }
 
-    //  Download 
+    //  Download
 
     /**
      * Downloads the APK using DownloadManager and emits [DownloadState] updates.
@@ -353,7 +351,7 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    //  Install 
+    //  Install
 
     /**
      * Launches Android's package installer for the downloaded APK.
@@ -362,7 +360,7 @@ class UpdateManager(private val context: Context) {
     fun installApk(apkFile: File) {
         val uri = FileProvider.getUriForFile(
             context,
-            "${context.packageName}.update.provider",   // authority declared in manifest
+            "${context.packageName}.update.provider",
             apkFile
         )
         val intent = Intent(Intent.ACTION_VIEW).apply {
