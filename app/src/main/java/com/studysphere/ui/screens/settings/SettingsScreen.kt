@@ -239,8 +239,27 @@ fun SettingsScreen(
                             )
                         }
                     }
+                    // Notification hint — informs the user that this setting
+                    // also controls when daily push notifications fire.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Rounded.NotificationsActive,
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                        Text(
+                            "You'll be notified daily at 8:00 AM for assignments due within this window",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
                 }
             }
+
 
             // ── 4. TIMETABLE ──────────────────────────────────────────────────
 
