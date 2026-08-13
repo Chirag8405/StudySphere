@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
-    <include domain="sharedpref" path="."/>
+    <!-- Theme / UI preferences stored in SharedPreferences -->
+    <include domain="sharedpref" path="." />
+    <!-- Room database — subjects, lectures, attendance, assignments -->
+    <include domain="database" path="studysphere.db" />
+    <!-- DataStore preferences (dark-mode setting, etc.) -->
+    <include domain="file" path="datastore/" />
 </full-backup-content>

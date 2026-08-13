@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="sharedpref" path="."/>
+        <!-- Theme / UI preferences stored in SharedPreferences -->
+        <include domain="sharedpref" path="." />
+        <!-- Room database — subjects, lectures, attendance, assignments -->
+        <include domain="database" path="studysphere.db" />
+        <!-- DataStore preferences (dark-mode setting, etc.) -->
+        <include domain="file" path="datastore/" />
     </cloud-backup>
+    <device-transfer>
+        <!-- Preserve all user data when transferring to a new device -->
+        <include domain="sharedpref" path="." />
+        <include domain="database" path="studysphere.db" />
+        <include domain="file" path="datastore/" />
+    </device-transfer>
 </data-extraction-rules>
