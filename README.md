@@ -1,5 +1,3 @@
-Stable release (v1.2.4):
-[StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/v1.2.5/StudySphere-v1.2.5.apk)
 
 # StudySphere
 
@@ -7,8 +5,7 @@ StudySphere is an Android planner for students who want to track classes, attend
 
 ## Download
 
-Stable release:
-[StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/v1.2.3/StudySphere-v1.2.3.apk)
+Stable link : [StudySphere.apk](https://github.com/Chirag8405/StudySphere/releases/download/v1.2.5/StudySphere-v1.2.5.apk)
 
 ## Core Features
 
