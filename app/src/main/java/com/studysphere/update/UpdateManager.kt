@@ -11,15 +11,17 @@ import android.os.Environment
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
 import java.io.IOException
-import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.SocketTimeoutException
 import java.net.URL
@@ -33,6 +35,7 @@ data class GithubRelease(
     val versionCode: Int,          // derived from tag via same formula as build.gradle
     val releaseNotes: String,
     val apkDownloadUrl: String,
+    val apkExpectedBytes: Long,    // size GitHub reports for the asset, -1 if unknown
     val htmlUrl: String
 )
 
@@ -70,9 +73,8 @@ class UpdateManager(private val context: Context) {
         // "StudySphere-v1.2.4.apk" change every release, so we don't hardcode a name.
         private val APK_NAME_REGEX = Regex(""".+\.apk$""", RegexOption.IGNORE_CASE)
 
-        // Minimum size to treat an on-disk APK as valid (avoids re-downloading
-        // when the file already exists from a previous completed download).
-        private const val MIN_APK_BYTES = 1_000_000L   // 1 MB
+        // How often to poll DownloadManager for progress/status.
+        private const val POLL_INTERVAL_MS = 500L
     }
 
     //  Version check
@@ -121,6 +123,8 @@ class UpdateManager(private val context: Context) {
             conn = (URL(RELEASES_API).openConnection() as HttpURLConnection).apply {
                 requestMethod = "GET"
                 setRequestProperty("Accept", "application/vnd.github+json")
+                // Avoid any intermediate cache serving a stale release payload.
+                setRequestProperty("Cache-Control", "no-cache")
                 connectTimeout = 10_000
                 readTimeout = 10_000
             }
@@ -165,15 +169,16 @@ class UpdateManager(private val context: Context) {
             }
 
             val assetNames = mutableListOf<String>()
-            val apkAssets = mutableListOf<Pair<String, String>>()
+            val apkAssets = mutableListOf<Triple<String, String, Long>>()
             for (i in 0 until assetsJson.length()) {
                 val asset = assetsJson.getJSONObject(i)
                 val name = asset.optString("name", "")
                 val url = asset.optString("browser_download_url", "")
+                val size = asset.optLong("size", -1L)
                 if (name.isEmpty() || url.isEmpty()) continue
                 assetNames.add(name)
                 if (APK_NAME_REGEX.matches(name)) {
-                    apkAssets.add(name to url)
+                    apkAssets.add(Triple(name, url, size))
                 }
             }
 
@@ -190,7 +195,7 @@ class UpdateManager(private val context: Context) {
                 )
             }
 
-            val (_, apkUrl) = apkAssets.first()
+            val (_, apkUrl, apkSize) = apkAssets.first()
 
             return FetchReleaseResult.Success(
                 GithubRelease(
@@ -199,6 +204,7 @@ class UpdateManager(private val context: Context) {
                     versionCode = versionCode,
                     releaseNotes = releaseNotes,
                     apkDownloadUrl = apkUrl,
+                    apkExpectedBytes = apkSize,
                     htmlUrl = htmlUrl
                 )
             )
@@ -250,7 +256,7 @@ class UpdateManager(private val context: Context) {
      */
     private fun parseVersionCode(versionName: String): Int? {
         val parts = versionName.split(".")
-        if (parts.isEmpty() || parts.any { it.toIntOrNull() == null }) return null
+        if (parts.isEmpty() || parts.size > 3 || parts.any { it.toIntOrNull() == null }) return null
         val nums = parts.map { it.toInt() }
         val major = nums.getOrElse(0) { 0 }
         val minor = nums.getOrElse(1) { 0 }
@@ -262,31 +268,25 @@ class UpdateManager(private val context: Context) {
 
     /**
      * Downloads the APK using DownloadManager and emits [DownloadState] updates.
-     *
-     * Fixes over the original:
-     *  1. Polling thread checks COLUMN_STATUS — completion is detected without
-     *     relying solely on ACTION_DOWNLOAD_COMPLETE, which is unreliable on
-     *     Android 13+ with RECEIVER_NOT_EXPORTED on some OEM ROMs.
-     *  2. If a valid APK already exists on disk (user dismissed the dialog after
-     *     the download finished), we skip re-downloading entirely.
-     *  3. AtomicBoolean prevents the polling thread and broadcast receiver from
-     *     both trying to close the channel.
+     * Always performs a fresh download for the requested release — any existing
+     * file for this or an older release is deleted first, so a stale or corrupt
+     * on-disk APK can never be silently reused. This is the key fix versus the
+     * previous version: no "already exists, skip straight to Downloaded" path.
      */
     fun downloadUpdate(release: GithubRelease): Flow<DownloadState> = callbackFlow {
         val apkFile = File(
             context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS),
-            "StudySphere-update.apk"
+            "StudySphere-${release.tagName}-update.apk"
         )
 
-        // Short-circuit: valid APK already on disk — go straight to Install.
-        if (apkFile.exists() && apkFile.length() >= MIN_APK_BYTES) {
-            trySend(DownloadState.Downloaded(apkFile))
-            channel.close()
-            return@callbackFlow
-        }
-
-        // Clean up any partial / stale file before a fresh download.
-        if (apkFile.exists()) apkFile.delete()
+        // Wipe any previous update APKs (this version's or older) before starting.
+        // We never trust a pre-existing file, so this always results in a real download.
+        context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)
+            ?.listFiles { f ->
+                (f.name.startsWith("StudySphere-") && f.name.endsWith("-update.apk"))
+                    || f.name == "StudySphere-update.apk"
+            }
+            ?.forEach { it.delete() }
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(release.apkDownloadUrl)).apply {
@@ -298,62 +298,48 @@ class UpdateManager(private val context: Context) {
             setAllowedNetworkTypes(
                 DownloadManager.Request.NETWORK_WIFI or DownloadManager.Request.NETWORK_MOBILE
             )
+            // Cache-busting: force a real network fetch rather than letting
+            // DownloadManager or an intermediate proxy serve a cached/stale asset.
+            addRequestHeader("Cache-Control", "no-cache")
         }
 
         val downloadId = dm.enqueue(request)
         trySend(DownloadState.Downloading(0))
 
-        // Prevents both the polling thread and the broadcast receiver from
-        // closing the channel simultaneously.
+        // Guards against the coroutine poll loop and the broadcast receiver both
+        // trying to finish the flow.
         val completed = AtomicBoolean(false)
 
-        // Polling thread — checks STATUS every 500 ms so we detect completion
-        // even if the broadcast is never delivered.
-        val pollingThread = Thread {
-            while (!completed.get()) {
-                Thread.sleep(500)
-                val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
-                if (cursor == null || !cursor.moveToFirst()) {
-                    cursor?.close()
-                    continue
-                }
-                val status  = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                val dlBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
-                val total   = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
-                val reason  = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
-                cursor.close()
-
-                when (status) {
-                    DownloadManager.STATUS_SUCCESSFUL -> {
-                        if (completed.compareAndSet(false, true)) {
-                            trySend(DownloadState.Downloaded(apkFile))
-                            channel.close()
-                        }
-                        return@Thread
-                    }
-                    DownloadManager.STATUS_FAILED -> {
-                        if (completed.compareAndSet(false, true)) {
-                            trySend(DownloadState.Failed("Download failed (reason $reason)"))
-                            channel.close()
-                        }
-                        return@Thread
-                    }
-                    else -> {
-                        if (total > 0) {
-                            trySend(DownloadState.Downloading(((dlBytes * 100) / total).toInt()))
-                        }
-                    }
-                }
+        fun finishSuccess() {
+            if (!completed.compareAndSet(false, true)) return
+            // Verify size against what GitHub reported for the asset, if known,
+            // so a truncated download never gets treated as a valid APK.
+            val expected = release.apkExpectedBytes
+            if (expected > 0 && apkFile.length() < expected) {
+                trySend(
+                    DownloadState.Failed(
+                        "Downloaded file is smaller than expected (${apkFile.length()} of $expected bytes) — likely a truncated download."
+                    )
+                )
+            } else if (!apkFile.exists() || apkFile.length() == 0L) {
+                trySend(DownloadState.Failed("Download reported success but the file is missing or empty."))
+            } else {
+                trySend(DownloadState.Downloaded(apkFile))
             }
+            channel.close()
         }
-        pollingThread.start()
 
-        // Broadcast receiver — backup to the polling thread.
+        fun finishFailure(reason: String) {
+            if (!completed.compareAndSet(false, true)) return
+            trySend(DownloadState.Failed(reason))
+            channel.close()
+        }
+
+        // Broadcast receiver — fast path, fires as soon as the system reports completion.
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
                 val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
-                if (id != downloadId) return
-                if (!completed.compareAndSet(false, true)) return  // polling already finished
+                if (id != downloadId || completed.get()) return
 
                 val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
                 if (cursor != null && cursor.moveToFirst()) {
@@ -361,15 +347,14 @@ class UpdateManager(private val context: Context) {
                     val reason = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
                     cursor.close()
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        trySend(DownloadState.Downloaded(apkFile))
+                        finishSuccess()
                     } else {
-                        trySend(DownloadState.Failed("Download failed (status $status, reason $reason)"))
+                        finishFailure("Download failed (status $status, reason $reason)")
                     }
                 } else {
                     cursor?.close()
-                    trySend(DownloadState.Failed("Download record not found"))
+                    finishFailure("Download record not found")
                 }
-                channel.close()
             }
         }
 
@@ -387,8 +372,46 @@ class UpdateManager(private val context: Context) {
             )
         }
 
+        // Coroutine-based poll — reliable fallback in case the broadcast is never
+        // delivered (happens on some OEM ROMs / Android 13+ receiver quirks).
+        // Using delay() instead of a raw Thread means cancellation is immediate:
+        // when the flow collector goes away, this coroutine is cancelled right
+        // away rather than finishing its current sleep first.
+        val pollJob = launch(Dispatchers.IO) {
+            while (isActive && !completed.get()) {
+                delay(POLL_INTERVAL_MS)
+                val cursor = dm.query(DownloadManager.Query().setFilterById(downloadId))
+                if (cursor == null || !cursor.moveToFirst()) {
+                    cursor?.close()
+                    continue
+                }
+                val status  = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                val dlBytes = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
+                val total   = cursor.getLong(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
+                val reason  = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
+                cursor.close()
+
+                when (status) {
+                    DownloadManager.STATUS_SUCCESSFUL -> {
+                        finishSuccess()
+                        return@launch
+                    }
+                    DownloadManager.STATUS_FAILED -> {
+                        finishFailure("Download failed (reason $reason)")
+                        return@launch
+                    }
+                    else -> {
+                        if (total > 0) {
+                            trySend(DownloadState.Downloading(((dlBytes * 100) / total).toInt()))
+                        }
+                    }
+                }
+            }
+        }
+
         awaitClose {
-            completed.set(true)   // stops the polling thread
+            completed.set(true)
+            pollJob.cancel()
             runCatching { context.unregisterReceiver(receiver) }
         }
     }
