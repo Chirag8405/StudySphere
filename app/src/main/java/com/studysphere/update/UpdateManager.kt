@@ -14,11 +14,14 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.withContext
+import org.json.JSONException
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.File
+import java.io.IOException
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
+import java.net.SocketTimeoutException
 import java.net.URL
 
 //  Data Models 
@@ -45,6 +48,13 @@ sealed class DownloadState {
     data class Failed(val reason: String) : DownloadState()
 }
 
+/** Internal result of the raw GitHub API fetch — carries a specific reason on failure
+ *  instead of collapsing everything into null, so the caller can surface a real message. */
+private sealed class FetchReleaseResult {
+    data class Success(val release: GithubRelease) : FetchReleaseResult()
+    data class Failure(val reason: String) : FetchReleaseResult()
+}
+
 //  UpdateManager 
 
 class UpdateManager(private val context: Context) {
@@ -52,9 +62,12 @@ class UpdateManager(private val context: Context) {
     companion object {
         private const val GITHUB_OWNER = "Chirag8405"
         private const val GITHUB_REPO = "StudySphere"
-        private const val APK_ASSET_NAME = "StudySphere.apk"   // must match your release asset name
         private const val RELEASES_API =
             "https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest"
+
+        // Matches any asset ending in ".apk" (case-insensitive). Filenames like
+        // "StudySphere-v1.2.4.apk" change every release, so we don't hardcode a name.
+        private val APK_NAME_REGEX = Regex(""".+\.apk$""", RegexOption.IGNORE_CASE)
     }
 
     //  Version check 
@@ -64,18 +77,23 @@ class UpdateManager(private val context: Context) {
      * Call from a ViewModel / coroutine scope (runs on IO dispatcher internally).
      */
     suspend fun checkForUpdate(): UpdateCheckResult = withContext(Dispatchers.IO) {
-        try {
-            val release = fetchLatestRelease()
-                ?: return@withContext UpdateCheckResult.Error("No release found")
-
-            val installedCode = installedVersionCode()
-            return@withContext if (release.versionCode > installedCode) {
-                UpdateCheckResult.UpdateAvailable(release)
-            } else {
-                UpdateCheckResult.UpToDate
+        when (val result = fetchLatestRelease()) {
+            is FetchReleaseResult.Failure -> UpdateCheckResult.Error(result.reason)
+            is FetchReleaseResult.Success -> {
+                val release = result.release
+                val installedCode = try {
+                    installedVersionCode()
+                } catch (e: Exception) {
+                    return@withContext UpdateCheckResult.Error(
+                        "Couldn't read installed app version: ${e.localizedMessage ?: e.javaClass.simpleName}"
+                    )
+                }
+                if (release.versionCode > installedCode) {
+                    UpdateCheckResult.UpdateAvailable(release)
+                } else {
+                    UpdateCheckResult.UpToDate
+                }
             }
-        } catch (e: Exception) {
-            UpdateCheckResult.Error(e.localizedMessage ?: "Unknown error")
         }
     }
 
@@ -92,51 +110,148 @@ class UpdateManager(private val context: Context) {
         }
     }
 
-    private fun fetchLatestRelease(): GithubRelease? {
-        val conn = URL(RELEASES_API).openConnection() as HttpURLConnection
-        conn.apply {
-            requestMethod = "GET"
-            setRequestProperty("Accept", "application/vnd.github+json")
-            connectTimeout = 10_000
-            readTimeout = 10_000
+    private fun fetchLatestRelease(): FetchReleaseResult {
+        var conn: HttpURLConnection? = null
+        try {
+            conn = (URL(RELEASES_API).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                setRequestProperty("Accept", "application/vnd.github+json")
+                connectTimeout = 10_000
+                readTimeout = 10_000
+            }
+
+            val responseCode = conn.responseCode
+
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                return FetchReleaseResult.Failure(describeHttpError(conn, responseCode))
+            }
+
+            val body = conn.inputStream.bufferedReader().use(BufferedReader::readText)
+
+            val json = try {
+                JSONObject(body)
+            } catch (e: JSONException) {
+                return FetchReleaseResult.Failure(
+                    "GitHub returned a response that couldn't be parsed as JSON: ${e.localizedMessage}"
+                )
+            }
+
+            val tag = json.optString("tag_name", "")
+            if (tag.isEmpty()) {
+                return FetchReleaseResult.Failure("GitHub response is missing a 'tag_name' field.")
+            }
+
+            val versionName = tag.trimStart('v')
+            val versionCode = parseVersionCode(versionName)
+            if (versionCode == null) {
+                return FetchReleaseResult.Failure(
+                    "Couldn't parse a version number out of tag '$tag'. Expected a format like 'v1.2.3'."
+                )
+            }
+
+            val releaseNotes = json.optString("body", "")
+            val htmlUrl = json.optString("html_url", "")
+
+            val assetsJson = json.optJSONArray("assets")
+            if (assetsJson == null || assetsJson.length() == 0) {
+                return FetchReleaseResult.Failure(
+                    "Release $tag has no files attached to it — nothing to download."
+                )
+            }
+
+            val assetNames = mutableListOf<String>()
+            val apkAssets = mutableListOf<Pair<String, String>>() // name to download URL
+            for (i in 0 until assetsJson.length()) {
+                val asset = assetsJson.getJSONObject(i)
+                val name = asset.optString("name", "")
+                val url = asset.optString("browser_download_url", "")
+                if (name.isEmpty() || url.isEmpty()) continue
+                assetNames.add(name)
+                if (APK_NAME_REGEX.matches(name)) {
+                    apkAssets.add(name to url)
+                }
+            }
+
+            if (apkAssets.isEmpty()) {
+                return FetchReleaseResult.Failure(
+                    "Release $tag has no .apk file attached. Found: ${assetNames.joinToString(", ")}."
+                )
+            }
+
+            if (apkAssets.size > 1) {
+                // We expect exactly one APK per release; more than one means something
+                // unexpected about the release, so surface it instead of guessing.
+                return FetchReleaseResult.Failure(
+                    "Release $tag has ${apkAssets.size} .apk files attached, expected exactly one: " +
+                        apkAssets.joinToString(", ") { it.first }
+                )
+            }
+
+            val (apkName, apkUrl) = apkAssets.first()
+
+            return FetchReleaseResult.Success(
+                GithubRelease(
+                    tagName = tag,
+                    versionName = versionName,
+                    versionCode = versionCode,
+                    releaseNotes = releaseNotes,
+                    apkDownloadUrl = apkUrl,
+                    htmlUrl = htmlUrl
+                )
+            )
+        } catch (e: SocketTimeoutException) {
+            return FetchReleaseResult.Failure("Timed out contacting GitHub. Check your connection and try again.")
+        } catch (e: IOException) {
+            return FetchReleaseResult.Failure("Network error while contacting GitHub: ${e.localizedMessage ?: e.javaClass.simpleName}")
+        } catch (e: Exception) {
+            return FetchReleaseResult.Failure("Unexpected error checking for updates: ${e.localizedMessage ?: e.javaClass.simpleName}")
+        } finally {
+            conn?.disconnect()
         }
+    }
 
-        if (conn.responseCode != 200) return null
+    private fun describeHttpError(conn: HttpURLConnection, responseCode: Int): String {
+        return when (responseCode) {
+            HttpURLConnection.HTTP_NOT_FOUND ->
+                "No published release found for $GITHUB_OWNER/$GITHUB_REPO. " +
+                    "(The latest release may still be a draft or marked as pre-release — " +
+                    "GitHub's \"latest\" endpoint skips those.)"
 
-        val body = BufferedReader(InputStreamReader(conn.inputStream)).use { it.readText() }
-        val json = JSONObject(body)
+            HttpURLConnection.HTTP_FORBIDDEN, 429 -> {
+                val remaining = conn.getHeaderField("X-RateLimit-Remaining")
+                val resetEpoch = conn.getHeaderField("X-RateLimit-Reset")?.toLongOrNull()
+                val resetInfo = if (resetEpoch != null) {
+                    val waitSeconds = (resetEpoch * 1000 - System.currentTimeMillis()) / 1000
+                    if (waitSeconds > 0) " Try again in ~${waitSeconds}s." else ""
+                } else ""
+                "GitHub API rate limit hit (remaining: ${remaining ?: "unknown"}).$resetInfo"
+            }
 
-        val tag = json.getString("tag_name")          // "v1.3.0"
-        val versionName = tag.trimStart('v')           // "1.3.0"
-        val versionCode = parseVersionCode(versionName)
-        val releaseNotes = json.optString("body", "")
-        val htmlUrl = json.optString("html_url", "")
-
-        val assets = json.getJSONArray("assets")
-        var apkUrl = ""
-        for (i in 0 until assets.length()) {
-            val asset = assets.getJSONObject(i)
-            if (asset.getString("name") == APK_ASSET_NAME) {
-                apkUrl = asset.getString("browser_download_url")
-                break
+            else -> {
+                val errorBody = try {
+                    conn.errorStream?.bufferedReader()?.use(BufferedReader::readText)
+                } catch (e: IOException) {
+                    null
+                }
+                "GitHub API returned HTTP $responseCode." +
+                    if (!errorBody.isNullOrBlank()) " Response: ${errorBody.take(200)}" else ""
             }
         }
-
-        if (apkUrl.isEmpty()) return null
-
-        return GithubRelease(tag, versionName, versionCode, releaseNotes, apkUrl, htmlUrl)
     }
 
     /**
      * Converts "1.3.0" → 130, "1.10.2" → 11002, etc.
      * Must match the versionCode logic you use in build.gradle.
      * Default: major*10000 + minor*100 + patch
+     * Returns null if versionName isn't in a recognizable numeric dotted format.
      */
-    private fun parseVersionCode(versionName: String): Int {
-        val parts = versionName.split(".").map { it.toIntOrNull() ?: 0 }
-        val major = parts.getOrElse(0) { 0 }
-        val minor = parts.getOrElse(1) { 0 }
-        val patch = parts.getOrElse(2) { 0 }
+    private fun parseVersionCode(versionName: String): Int? {
+        val parts = versionName.split(".")
+        if (parts.isEmpty() || parts.any { it.toIntOrNull() == null }) return null
+        val nums = parts.map { it.toInt() }
+        val major = nums.getOrElse(0) { 0 }
+        val minor = nums.getOrElse(1) { 0 }
+        val patch = nums.getOrElse(2) { 0 }
         return major * 10_000 + minor * 100 + patch
     }
 
@@ -203,11 +318,13 @@ class UpdateManager(private val context: Context) {
                 if (cursor != null && cursor.moveToFirst()) {
                     val status =
                         cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+                    val reason =
+                        cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_REASON))
                     cursor.close()
                     if (status == DownloadManager.STATUS_SUCCESSFUL) {
                         trySend(DownloadState.Downloaded(apkFile))
                     } else {
-                        trySend(DownloadState.Failed("Download failed (status $status)"))
+                        trySend(DownloadState.Failed("Download failed (status $status, reason $reason)"))
                     }
                 } else {
                     trySend(DownloadState.Failed("Download record not found"))
