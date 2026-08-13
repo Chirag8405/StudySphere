@@ -21,9 +21,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.studysphere.R
 import com.studysphere.ui.components.SphereCard
 import com.studysphere.ui.theme.*
+import com.studysphere.update.DownloadState
+import com.studysphere.update.UpdateDialog
+import com.studysphere.update.UpdateViewModel
 import com.studysphere.viewmodel.ImportResult
 import com.studysphere.viewmodel.MainViewModel
 import kotlinx.coroutines.launch
@@ -38,7 +42,8 @@ import java.time.LocalDate
 @Composable
 fun SettingsScreen(
     viewModel: MainViewModel,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    updateViewModel: UpdateViewModel = viewModel()
 ) {
     val context = LocalContext.current
     val scope   = rememberCoroutineScope()
@@ -53,6 +58,10 @@ fun SettingsScreen(
     val subjects           by viewModel.subjects.collectAsStateWithLifecycle()
     val allLectures        by viewModel.allLectures.collectAsStateWithLifecycle()
     val allAssignments     by viewModel.allAssignments.collectAsStateWithLifecycle()
+    val updateState        by updateViewModel.state.collectAsStateWithLifecycle()
+    val appVersionName = remember(context) {
+        context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+    }
 
     // ── Dialog state booleans ─────────────────────────────────────────────────
 
@@ -160,7 +169,6 @@ fun SettingsScreen(
             SettingsSectionHeader("Attendance", Icons.Rounded.HowToReg)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    // Working days
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         SettingsLabel("Working days per week")
                         Text(
@@ -314,9 +322,9 @@ fun SettingsScreen(
             SettingsSectionHeader("Statistics", Icons.Rounded.BarChart)
             SphereCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    DataStatRow("Subjects",         subjects.size.toString(),    Icons.Rounded.School)
-                    DataStatRow("Schedule Slots",    allLectures.size.toString(), Icons.Rounded.CalendarToday)
-                    DataStatRow("Assignments",      allAssignments.size.toString(), Icons.Rounded.Assignment)
+                    DataStatRow("Subjects",      subjects.size.toString(),       Icons.Rounded.School)
+                    DataStatRow("Schedule Slots", allLectures.size.toString(),   Icons.Rounded.CalendarToday)
+                    DataStatRow("Assignments",   allAssignments.size.toString(), Icons.Rounded.Assignment)
                 }
             }
 
@@ -381,11 +389,21 @@ fun SettingsScreen(
                                 fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onBackground
                             )
+                            // Live version string — replaces hardcoded "Version 1.2.0"
                             Text(
-                                "Version 1.2.0",
+                                "Version $appVersionName",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            // Show download progress inline under the version if active
+                            val dlState = updateState.downloadState
+                            if (dlState is DownloadState.Downloading) {
+                                Text(
+                                    "Downloading update… ${dlState.progressPercent}%",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = PrimaryPurple
+                                )
+                            }
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -395,6 +413,17 @@ fun SettingsScreen(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         fontWeight = FontWeight.Medium
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
+                    // ── Check for updates row ─────────────────────────────────
+                    CheckForUpdatesRow(
+                        updateState = updateState,
+                        onCheck     = { updateViewModel.checkForUpdate() },
+                        onReopen    = { updateViewModel.reopenDialog() }
+                    )
+
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+
                     // View on GitHub
                     Row(
                         modifier = Modifier
@@ -439,7 +468,16 @@ fun SettingsScreen(
         }
     }
 
-    // ── Dialogs ───────────────────────────────────────────────────────────────
+    // ── Update dialog — rendered outside Scaffold so it overlays everything ──
+
+    UpdateDialog(
+        state           = updateState,
+        onStartDownload = { updateViewModel.startDownload() },
+        onInstall       = { updateViewModel.installAndCleanup(it) },
+        onDismiss       = { updateViewModel.dismissDialog() }
+    )
+
+    // ── All other dialogs (unchanged) ─────────────────────────────────────────
 
     if (showImportTimetableConfirm) {
         AlertDialog(
@@ -624,7 +662,121 @@ fun SettingsScreen(
     }
 }
 
-// ─── Sub-composables ──────────────────────────────────────────────────────────
+// ─── Check for updates row ────────────────────────────────────────────────────
+
+@Composable
+private fun CheckForUpdatesRow(
+    updateState: com.studysphere.update.UpdateUiState,
+    onCheck: () -> Unit,
+    onReopen: () -> Unit,
+) {
+    val dlState   = updateState.downloadState
+    val hasUpdate = updateState.availableRelease != null
+
+    val subtitle = when {
+        updateState.isChecking                      -> "Connecting to GitHub…"
+        updateState.checkError != null              -> "Tap to retry"
+        dlState is DownloadState.Downloading        -> "Downloading ${dlState.progressPercent}% — tap to view"
+        dlState is DownloadState.Downloaded         -> "Ready to install — tap to open"
+        hasUpdate                                   -> "v${updateState.availableRelease!!.versionName} is available"
+        updateState.hasChecked                      -> "You're on the latest version"
+        else                                        -> "Tap to check"
+    }
+
+    val subtitleColor = when {
+        hasUpdate || dlState is DownloadState.Downloaded -> PrimaryPurple
+        updateState.checkError != null                   -> MaterialTheme.colorScheme.error
+        else                                             -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val iconTint = when {
+        hasUpdate || dlState is DownloadState.Downloaded -> PrimaryPurple
+        else                                             -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    val onClick: () -> Unit = when {
+        updateState.isChecking                                   -> ({})
+        dlState is DownloadState.Downloading
+            || dlState is DownloadState.Downloaded              -> onReopen
+        else                                                     -> onCheck
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !updateState.isChecking, onClick = onClick)
+            .padding(horizontal = 0.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(10.dp))
+                .background(iconTint.copy(alpha = 0.1f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Rounded.SystemUpdateAlt,
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+                tint = iconTint
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            Text(
+                "Check for updates",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onBackground
+            )
+            Text(
+                subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = subtitleColor
+            )
+        }
+        // Trailing — spinner while checking, badge when update waiting, chevron otherwise
+        when {
+            updateState.isChecking -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            dlState is DownloadState.Downloading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = PrimaryPurple
+                )
+            }
+            hasUpdate || dlState is DownloadState.Downloaded -> {
+                Badge(containerColor = PrimaryPurple) {
+                    Text(
+                        if (dlState is DownloadState.Downloaded) "!" else "New",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White
+                    )
+                }
+            }
+            else -> {
+                Icon(
+                    Icons.Rounded.ChevronRight,
+                    null,
+                    Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
+            }
+        }
+    }
+}
+
+// ─── Sub-composables (all unchanged) ─────────────────────────────────────────
 
 @Composable
 private fun SettingsSectionHeader(
@@ -747,7 +899,7 @@ private fun ThemeSegmentedButtons(
     }
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ─── Helpers (unchanged) ──────────────────────────────────────────────────────
 
 private fun formatBackupTimestamp(isoString: String): String {
     return try {
