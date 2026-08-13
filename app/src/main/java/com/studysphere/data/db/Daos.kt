@@ -164,6 +164,9 @@ interface AssignmentDao {
     @Query("SELECT * FROM assignments WHERE id = :id")
     suspend fun getAssignmentById(id: Long): Assignment?
 
+    @Query("SELECT * FROM assignments WHERE status = 'PENDING' AND dueDate BETWEEN :from AND :to ORDER BY dueDate ASC")
+    suspend fun getPendingAssignmentsDueBetween(from: String, to: String): List<Assignment>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAssignment(assignment: Assignment): Long
 
