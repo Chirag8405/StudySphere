@@ -11,6 +11,7 @@ import com.studysphere.data.db.StudySphereDatabase
 import com.studysphere.data.models.*
 import com.studysphere.data.repository.StudySphereRepository
 import com.studysphere.ui.theme.SubjectColors
+import com.studysphere.widget.WidgetDataWorker
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import org.json.JSONArray
@@ -211,6 +212,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.markAttendance(lectureId, subjectId, date, status)
             refreshSummaries()
+            WidgetDataWorker.enqueue(getApplication())
         }
     }
 
@@ -222,6 +224,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.markExtraAttendance(subjectId, date, status, startH, startM, endH, endM, room)
             refreshSummaries()
+            WidgetDataWorker.enqueue(getApplication())
         }
     }
 
@@ -229,6 +232,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.updateAttendanceStatus(record, status)
             refreshSummaries()
+            WidgetDataWorker.enqueue(getApplication())
         }
     }
 
@@ -236,6 +240,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.deleteAttendanceRecord(record)
             refreshSummaries()
+            WidgetDataWorker.enqueue(getApplication())
         }
     }
 
@@ -348,6 +353,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.markAttendance(lectureId, subjectId, date.toString(), status)
             refreshSummaries()
+            WidgetDataWorker.enqueue(getApplication())
         }
     }
 

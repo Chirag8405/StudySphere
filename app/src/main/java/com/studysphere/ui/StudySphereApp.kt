@@ -40,11 +40,21 @@ val bottomNavItems = listOf(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StudySphereApp(viewModel: MainViewModel) {
+fun StudySphereApp(viewModel: MainViewModel, startRoute: String? = null) {
     val navController          = rememberNavController()
     val navBackStackEntry      by navController.currentBackStackEntryAsState()
     val currentDestination     = navBackStackEntry?.destination
     val currentRoute           = currentDestination?.route ?: ""
+
+    // Navigate to the tab requested by the widget intent, but only once.
+    LaunchedEffect(startRoute) {
+        if (startRoute != null) {
+            navController.navigate(startRoute) {
+                popUpTo(navController.graph.startDestinationId) { inclusive = false }
+                launchSingleTop = true
+            }
+        }
+    }
 
     val topBarTitle = when {
         currentRoute == Screen.Dashboard.route          -> "Home"
