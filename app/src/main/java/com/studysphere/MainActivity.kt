@@ -56,9 +56,13 @@ class MainActivity : ComponentActivity() {
             val systemDark     = isSystemInDarkTheme()
             val isDark         = isDarkNullable ?: systemDark
 
+            // Read start_route extra from widget intents (e.g. "attendance" / "assignments").
+            // Null means the app was opened normally (no deep-link needed).
+            val startRoute = intent.getStringExtra("start_route")
+
             StudySphereTheme(darkTheme = isDark) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    StudySphereApp(viewModel = viewModel)
+                    StudySphereApp(viewModel = viewModel, startRoute = startRoute)
                 }
             }
         }

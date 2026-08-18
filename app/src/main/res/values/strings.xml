@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">StudySphere</string>
+    <string name="widget_description">Shows today\'s schedule and upcoming assignments</string>
 </resources>
